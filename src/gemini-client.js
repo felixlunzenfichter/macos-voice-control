@@ -41,7 +41,7 @@ export class GeminiLiveClient {
 
     this.ws.on('message', (data) => {
       const message = JSON.parse(data);
-      console.log('[GEMINI] Message received:', JSON.stringify(message).substring(0, 200));
+      console.log('[GEMINI] Message received:', JSON.stringify(message, null, 2));
       this.handleMessage(message);
     });
 
@@ -76,7 +76,22 @@ export class GeminiLiveClient {
   }
 
   handleMessage(message) {
-    // Handle tool calls (transcription or stop)
+    // Check for different message types
+    if (message.serverContent) {
+      if (message.serverContent.modelTurn) {
+        const parts = message.serverContent.modelTurn.parts || [];
+        for (const part of parts) {
+          if (part.functionCall) {
+            this.handleFunctionCall(part.functionCall);
+          }
+          if (part.text) {
+            this.emit('narration', part.text);
+          }
+        }
+      }
+    }
+    
+    // Legacy format check
     if (message.candidates?.[0]?.content?.parts) {
       const parts = message.candidates[0].content.parts;
       
@@ -85,12 +100,10 @@ export class GeminiLiveClient {
           this.handleFunctionCall(part.functionCall);
         }
         if (part.text) {
-          // Screen narration or other text responses
           this.emit('narration', part.text);
         }
       }
     }
-
   }
 
   handleFunctionCall(functionCall) {
@@ -150,8 +163,10 @@ export class GeminiLiveClient {
 
     const message = {
       clientContent: {
-        parts: [{
-          text
+        turns: [{
+          parts: [{
+            text
+          }]
         }]
       }
     };
