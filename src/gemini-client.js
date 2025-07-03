@@ -133,7 +133,7 @@ export class GeminiLiveClient {
     const message = {
       realtimeInput: {
         mediaChunks: [{
-          mimeType: 'audio/pcm',
+          mimeType: 'audio/pcm;rate=16000',
           data: audioData.toString('base64')
         }]
       }

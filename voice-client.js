@@ -68,6 +68,7 @@ class VoiceControl {
     
     this.audioCapture.stdout.on('data', (chunk) => {
       // Send audio chunks to Gemini
+      console.log(`[AUDIO] Sending chunk: ${chunk.length} bytes`);
       this.geminiClient.sendAudio(chunk);
     });
     
