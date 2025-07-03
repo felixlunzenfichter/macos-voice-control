@@ -1,0 +1,22 @@
+{
+  "name": "macos-voice-control",
+  "version": "1.0.0",
+  "description": "Fully Accessible Voice Development Environment",
+  "main": "voice-client.js",
+  "type": "module",
+  "scripts": {
+    "start": "node voice-client.js"
+  },
+  "keywords": [
+    "voice-control",
+    "accessibility",
+    "macos",
+    "development"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "ws": "^8.18.0"
+  }
+}
