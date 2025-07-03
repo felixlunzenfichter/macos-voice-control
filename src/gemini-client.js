@@ -41,7 +41,7 @@ export class GeminiLiveClient {
 
     this.ws.on('message', (data) => {
       const message = JSON.parse(data);
-      console.log('[GEMINI] Message received:', JSON.stringify(message, null, 2));
+      // console.log('[GEMINI] Message received:', JSON.stringify(message, null, 2));
       this.handleMessage(message);
     });
 
