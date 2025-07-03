@@ -60,7 +60,7 @@ export class GeminiLiveClient {
   sendInitialConfig() {
     const config = {
       setup: {
-        model: 'models/gemini-2.0-flash-exp',
+        model: 'models/gemini-2.0-flash-live-001',
         systemInstruction: {
           parts: [{
             text: SYSTEM_PROMPT
@@ -76,31 +76,21 @@ export class GeminiLiveClient {
   }
 
   handleMessage(message) {
-    // Check for different message types
+    // Handle tool calls
+    if (message.toolCall && message.toolCall.functionCalls) {
+      for (const functionCall of message.toolCall.functionCalls) {
+        this.handleFunctionCall(functionCall);
+      }
+    }
+    
+    // Handle server content
     if (message.serverContent) {
       if (message.serverContent.modelTurn) {
         const parts = message.serverContent.modelTurn.parts || [];
         for (const part of parts) {
-          if (part.functionCall) {
-            this.handleFunctionCall(part.functionCall);
-          }
           if (part.text) {
             this.emit('narration', part.text);
           }
-        }
-      }
-    }
-    
-    // Legacy format check
-    if (message.candidates?.[0]?.content?.parts) {
-      const parts = message.candidates[0].content.parts;
-      
-      for (const part of parts) {
-        if (part.functionCall) {
-          this.handleFunctionCall(part.functionCall);
-        }
-        if (part.text) {
-          this.emit('narration', part.text);
         }
       }
     }
