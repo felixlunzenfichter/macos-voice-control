@@ -41,6 +41,7 @@ export class GeminiLiveClient {
 
     this.ws.on('message', (data) => {
       const message = JSON.parse(data);
+      console.log('[GEMINI] Message received:', JSON.stringify(message).substring(0, 200));
       this.handleMessage(message);
     });
 
@@ -49,8 +50,8 @@ export class GeminiLiveClient {
       this.emit('error', error);
     });
 
-    this.ws.on('close', () => {
-      console.log('[GEMINI] Disconnected from Gemini Live API');
+    this.ws.on('close', (code, reason) => {
+      console.log(`[GEMINI] Disconnected from Gemini Live API (code: ${code}, reason: ${reason})`);
       this.isConnected = false;
       this.emit('disconnected');
     });
@@ -60,13 +61,14 @@ export class GeminiLiveClient {
     const config = {
       setup: {
         model: 'models/gemini-2.0-flash-exp',
-        config: {
-          response_modalities: ['audio', 'text'],
-          instructions: SYSTEM_PROMPT,
-          tools: {
-            function_declarations: FUNCTION_DECLARATIONS
-          }
-        }
+        systemInstruction: {
+          parts: [{
+            text: SYSTEM_PROMPT
+          }]
+        },
+        tools: [{
+          functionDeclarations: FUNCTION_DECLARATIONS
+        }]
       }
     };
 

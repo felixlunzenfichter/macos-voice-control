@@ -11,10 +11,10 @@ export const FUNCTION_DECLARATIONS = [
     name: "transcription",
     description: "Output the user's voice transcription to Claude Code",
     parameters: {
-      type: "object",
+      type: "OBJECT",
       properties: {
         text: {
-          type: "string",
+          type: "STRING",
           description: "The exact words spoken by the user"
         }
       },
@@ -25,7 +25,7 @@ export const FUNCTION_DECLARATIONS = [
     name: "stop",
     description: "Stop the voice control session",
     parameters: {
-      type: "object",
+      type: "OBJECT",
       properties: {}
     }
   }
