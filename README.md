@@ -5,10 +5,10 @@
 **Components:**
 
 1. **Gemini Flash Live Integration**
-- Real-time voice transcription with function calling
-- Screen reading capability for live audio feedback
+- Real-time voice interaction with audio and text input
+- Receives text transcripts from Claude Code hooks instead of screen reading
 - Two functions: transcription() and stop()
-- Provides audio narration of all screen activity for eye health/accessibility
+- Provides audio narration of Claude's work for eye health/accessibility
 
 2. **Root Directory Agent**
 - Runs in computer's root/home directory for full system access
