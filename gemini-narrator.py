@@ -20,11 +20,25 @@ import sys
 import pyaudio
 from typing import AsyncIterator
 from google import genai
+from pathlib import Path
 
-# Check for API key
-if "GOOGLE_API_KEY" not in os.environ:
-    print("Please set the GOOGLE_API_KEY environment variable")
+# Load .env file if it exists
+env_path = Path(__file__).parent / '.env'
+if env_path.exists():
+    with open(env_path) as f:
+        for line in f:
+            if line.strip() and not line.startswith('#'):
+                key, value = line.strip().split('=', 1)
+                os.environ[key] = value
+
+# Check for API key (supports both names)
+api_key = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GOOGLE_AI_API_KEY")
+if not api_key:
+    print("Please set the GOOGLE_API_KEY or GOOGLE_AI_API_KEY environment variable")
     sys.exit(1)
+
+# Set the API key for the Google AI SDK
+os.environ["GOOGLE_API_KEY"] = api_key
 
 # Audio configuration
 FORMAT = pyaudio.paInt16
