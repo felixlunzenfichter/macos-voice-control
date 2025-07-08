@@ -6,7 +6,7 @@
 
 1. **Gemini Flash Live Integration**
 - Real-time voice interaction with audio and text input
-- Receives text transcripts from Claude Code hooks instead of screen reading
+- Receives text transcripts from Claude Code hooks
 - Two functions: transcription() and stop()
 - Provides audio narration of Claude's work for eye health/accessibility
 
