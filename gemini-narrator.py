@@ -18,9 +18,8 @@ import asyncio
 import os
 import sys
 import pyaudio
-from typing import AsyncIterator
-from google import genai
 from pathlib import Path
+from google import genai
 
 # Load .env file if it exists
 env_path = Path(__file__).parent / '.env'
@@ -43,7 +42,6 @@ os.environ["GOOGLE_API_KEY"] = api_key
 # Audio configuration
 FORMAT = pyaudio.paInt16
 CHANNELS = 1
-SEND_SAMPLE_RATE = 16000
 RECEIVE_SAMPLE_RATE = 24000
 CHUNK_SIZE = 512
 
@@ -67,46 +65,17 @@ You will receive HTML transcripts showing Claude's work. Focus on:
 Remember: The developer is looking away from their screen to preserve eyesight, so be their eyes."""
 
 
-class AudioLoop:
-    """Handles bidirectional audio streaming with Gemini Live API"""
+class GeminiNarrator:
+    """Handles Gemini Live API connection and narration"""
     
     def __init__(self):
-        self.audio_in_queue = None
-        self.audio_out_queue = None
         self.session = None
-        self.send_text_task = None
+        self.audio_queue = None
+        self.pya = pyaudio.PyAudio()
         
-    async def send_text(self, text: str):
-        """Send text to Gemini for narration"""
-        if self.session:
-            await self.session.send(input=text, end_of_turn=True)
-            
-    async def listen_audio(self) -> AsyncIterator[bytes]:
-        """Capture audio from microphone"""
-        pya = pyaudio.PyAudio()
-        
-        stream = pya.open(
-            format=FORMAT,
-            channels=CHANNELS,
-            rate=SEND_SAMPLE_RATE,
-            input=True,
-            frames_per_buffer=CHUNK_SIZE,
-        )
-        
-        try:
-            while True:
-                data = await asyncio.to_thread(stream.read, CHUNK_SIZE)
-                yield data
-        finally:
-            stream.stop_stream()
-            stream.close()
-            pya.terminate()
-            
-    async def receive_audio(self):
+    async def play_audio(self):
         """Play audio responses from Gemini"""
-        pya = pyaudio.PyAudio()
-        
-        stream = pya.open(
+        stream = self.pya.open(
             format=FORMAT,
             channels=CHANNELS,
             rate=RECEIVE_SAMPLE_RATE,
@@ -116,62 +85,36 @@ class AudioLoop:
         
         try:
             while True:
-                async for response in self.session.receive():
-                    if response.audio:
-                        stream.write(response.audio.data)
-                        
-                    if response.text:
-                        print(f"Gemini: {response.text}")
+                audio_data = await self.audio_queue.get()
+                stream.write(audio_data)
         except Exception as e:
-            print(f"Error in receive_audio: {e}")
+            print(f"Error in play_audio: {e}")
         finally:
             stream.stop_stream()
             stream.close()
-            pya.terminate()
             
-    async def run(self):
-        """Main event loop"""
-        print("Initializing Gemini narrator...")
-        
-        # Initialize the client
-        client = genai.Client()
-        
-        # Create configuration with system instruction
-        config = {
-            "response_modalities": ["AUDIO"],
-            "speech_config": {
-                "voice_config": {"prebuilt_voice_config": {"voice_name": "Aoede"}},
-            },
-            "system_instruction": SYSTEM_INSTRUCTION,
-        }
-        
-        # Connect to Gemini Live API
-        async with client.aio.live.connect(model=MODEL, config=config) as session:
-            self.session = session
-            print("Connected to Gemini Live API")
-            print("Narrator is ready. Waiting for Claude transcripts...")
-            print("You can also speak to ask questions.\n")
+    async def receive_audio(self):
+        """Receive audio from Gemini and put in queue"""
+        try:
+            async for response in self.session.receive():
+                if response.server_content:
+                    if response.server_content.model_turn:
+                        for part in response.server_content.model_turn.parts:
+                            if part.inline_data and part.inline_data.mime_type.startswith("audio"):
+                                self.audio_queue.put_nowait(part.inline_data.data)
+                                
+                            if part.text:
+                                print(f"Gemini: {part.text}")
+        except Exception as e:
+            print(f"Error in receive_audio: {e}")
             
-            # Start audio tasks
-            async def send_audio():
-                async for chunk in self.listen_audio():
-                    await session.send(input=chunk)
-                    
-            send_task = asyncio.create_task(send_audio())
-            receive_task = asyncio.create_task(self.receive_audio())
-            
-            # Create a task for monitoring transcript updates
-            monitor_task = asyncio.create_task(self.monitor_transcripts())
-            
+    async def send_text(self, text: str):
+        """Send text to Gemini for narration"""
+        if self.session:
             try:
-                # Wait for tasks (they run forever unless cancelled)
-                await asyncio.gather(send_task, receive_task, monitor_task)
-            except KeyboardInterrupt:
-                print("\nShutting down narrator...")
-            finally:
-                send_task.cancel()
-                receive_task.cancel()
-                monitor_task.cancel()
+                await self.session.send_client_content(genai.ClientContent([text]))
+            except Exception as e:
+                print(f"Error sending text: {e}")
                 
     async def monitor_transcripts(self):
         """Monitor for new Claude transcripts"""
@@ -199,12 +142,51 @@ class AudioLoop:
                 
             # Check every second
             await asyncio.sleep(1)
+            
+    async def run(self):
+        """Main event loop"""
+        print("Initializing Gemini narrator...")
+        
+        # Initialize the client
+        client = genai.Client()
+        
+        # Create configuration
+        config = {
+            "response_modalities": ["AUDIO"],
+            "speech_config": {
+                "voice_config": {"prebuilt_voice_config": {"voice_name": "Aoede"}},
+            },
+            "system_instruction": SYSTEM_INSTRUCTION,
+        }
+        
+        # Connect to Gemini Live API
+        try:
+            async with client.aio.live.connect(model=MODEL, config=config) as session:
+                self.session = session
+                self.audio_queue = asyncio.Queue()
+                
+                print("Connected to Gemini Live API")
+                print("Narrator is ready. Waiting for Claude transcripts...")
+                print()
+                
+                # Start tasks
+                async with asyncio.TaskGroup() as tg:
+                    tg.create_task(self.receive_audio())
+                    tg.create_task(self.play_audio())
+                    tg.create_task(self.monitor_transcripts())
+                    
+        except KeyboardInterrupt:
+            print("\nShutting down narrator...")
+        except Exception as e:
+            print(f"Error: {e}")
+        finally:
+            self.pya.terminate()
 
 
 async def main():
     """Entry point"""
-    audio_loop = AudioLoop()
-    await audio_loop.run()
+    narrator = GeminiNarrator()
+    await narrator.run()
 
 
 if __name__ == "__main__":
