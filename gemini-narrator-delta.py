@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Gemini Live API Narrator for Claude Code
+Gemini Live API Narrator for Claude Code - Delta Version
 
 This script provides voice narration for Claude Code output using the Gemini Live API.
-It monitors Claude's transcript files directly and narrates what Claude has done.
+It monitors Claude's transcript files and only narrates NEW messages (delta).
 
 Requirements:
 - Set GOOGLE_API_KEY environment variable
@@ -11,7 +11,7 @@ Requirements:
 - pip install google-genai pyaudio
 
 Usage:
-    python gemini-narrator.py
+    python gemini-narrator-delta.py
 """
 
 import asyncio
@@ -73,6 +73,10 @@ class GeminiNarrator:
         self.session = None
         self.audio_queue = None
         self.pya = pyaudio.PyAudio()
+        # Track file positions for each transcript
+        self.file_positions = {}
+        # Track startup time
+        self.startup_time = None
         
     async def play_audio(self):
         """Play audio responses from Gemini"""
@@ -117,12 +121,20 @@ class GeminiNarrator:
             except Exception as e:
                 print(f"Error sending text: {e}")
                 
-    def extract_last_assistant_message(self, jsonl_path):
-        """Extract the last assistant message from JSONL transcript"""
-        last_assistant_message = None
+    def extract_new_messages(self, jsonl_path):
+        """Extract only NEW assistant messages from JSONL transcript"""
+        new_messages = []
+        file_path_str = str(jsonl_path)
+        
+        # Get the last position we read from this file
+        last_position = self.file_positions.get(file_path_str, 0)
         
         try:
             with open(jsonl_path, 'r') as f:
+                # Seek to last position
+                f.seek(last_position)
+                
+                # Read new lines
                 for line in f:
                     if line.strip():
                         try:
@@ -132,18 +144,30 @@ class GeminiNarrator:
                                 content = message.get('content', [])
                                 for item in content:
                                     if item.get('type') == 'text' and item.get('text'):
-                                        last_assistant_message = item['text']
+                                        new_messages.append(item['text'])
                         except json.JSONDecodeError:
                             continue
+                
+                # Update file position
+                self.file_positions[file_path_str] = f.tell()
+                
         except Exception as e:
             print(f"Error reading transcript: {e}")
             
-        return last_assistant_message
+        return new_messages
         
     async def monitor_transcripts(self):
-        """Monitor Claude transcript files directly"""
-        last_message = ""
+        """Monitor Claude transcript files for NEW messages only"""
         transcript_dir = Path.home() / '.claude' / 'projects' / '-Users-felixlunzenfichter'
+        
+        # Initialize file positions to END of all current files on startup
+        print("Initializing file positions to current end...")
+        for transcript_file in transcript_dir.glob('*.jsonl'):
+            with open(transcript_file, 'rb') as f:
+                # Seek to end of file
+                f.seek(0, 2)
+                self.file_positions[str(transcript_file)] = f.tell()
+        print(f"Tracking {len(self.file_positions)} transcript files")
         
         while True:
             try:
@@ -153,20 +177,23 @@ class GeminiNarrator:
                                         reverse=True)
                 
                 if transcript_files:
-                    # Use the most recent transcript file
+                    # Check the most recent transcript file
                     latest_transcript = transcript_files[0]
                     
-                    # Extract the last assistant message
-                    assistant_message = self.extract_last_assistant_message(latest_transcript)
+                    # Extract only NEW messages
+                    new_messages = self.extract_new_messages(latest_transcript)
                     
-                    if assistant_message and assistant_message != last_message:
-                        last_message = assistant_message
+                    # Send each new message
+                    for message in new_messages:
                         # Truncate if too long
-                        if len(assistant_message) > 2000:
-                            assistant_message = assistant_message[:2000] + "..."
+                        if len(message) > 2000:
+                            message = message[:2000] + "..."
                             
-                        print(f"New assistant message detected ({len(assistant_message)} chars)")
-                        await self.send_text(f"Claude just said: {assistant_message}")
+                        print(f"New assistant message detected ({len(message)} chars)")
+                        await self.send_text(f"Claude just said: {message}")
+                        
+                        # Small delay between messages to avoid overwhelming
+                        await asyncio.sleep(0.5)
                         
             except Exception as e:
                 print(f"Error monitoring transcripts: {e}")
@@ -197,7 +224,7 @@ class GeminiNarrator:
                 self.audio_queue = asyncio.Queue()
                 
                 print("Connected to Gemini Live API")
-                print("Narrator is ready. Waiting for Claude transcripts...")
+                print("Narrator is ready. Monitoring for NEW Claude messages...")
                 print()
                 
                 # Start tasks

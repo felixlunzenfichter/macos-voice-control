@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "Notification": [{
+      "type": "command",
+      "command": "python3 /Users/felixlunzenfichter/Documents/macos-voice-control/test-claude-hooks.py"
+    }],
+    "PreToolUse": [{
+      "type": "command",
+      "command": "echo \"Tool starting: $CLAUDE_TOOL_NAME\" >> /tmp/claude-activity.log"
+    }],
+    "PostToolUse": [{
+      "type": "command",
+      "command": "echo \"Tool finished: $CLAUDE_TOOL_NAME\" >> /tmp/claude-activity.log"
+    }]
+  }
+}
