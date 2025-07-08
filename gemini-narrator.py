@@ -112,7 +112,7 @@ class GeminiNarrator:
         """Send text to Gemini for narration"""
         if self.session:
             try:
-                await self.session.send_client_content(genai.ClientContent([text]))
+                await self.session.send(input=text, end_of_turn=True)
             except Exception as e:
                 print(f"Error sending text: {e}")
                 
