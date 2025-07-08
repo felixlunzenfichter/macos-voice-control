@@ -186,8 +186,8 @@ class AudioLoop:
             except Exception as e:
                 print(f"Error monitoring transcripts: {e}")
                 
-            # Check every 2 seconds
-            await asyncio.sleep(2)
+            # Check every second
+            await asyncio.sleep(1)
 
 
 async def main():
