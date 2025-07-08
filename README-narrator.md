@@ -4,23 +4,30 @@ This component provides voice narration for Claude Code output using the Gemini 
 
 ## Setup
 
-1. Install dependencies:
+1. Create and activate virtual environment:
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+2. Install dependencies:
 ```bash
 pip install google-genai pyaudio
 ```
 
-2. Set your Google API key:
+3. Set your Google API key:
 ```bash
 export GOOGLE_API_KEY="your-api-key-here"
 ```
 
-3. Ensure Claude Code hooks are configured to generate transcripts at:
+4. Ensure Claude Code hooks are configured to generate transcripts at:
    `/Users/felixlunzenfichter/Documents/claude-transcripts/latest.html`
 
 ## Usage
 
 Run the narrator:
 ```bash
+source venv/bin/activate  # if not already activated
 python gemini-narrator.py
 ```
 

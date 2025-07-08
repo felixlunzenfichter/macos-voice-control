@@ -78,8 +78,8 @@ class AudioLoop:
         
     async def send_text(self, text: str):
         """Send text to Gemini for narration"""
-        if self.session and self.session._send_queue:
-            await self.session._send_queue.put({"text": text})
+        if self.session:
+            await self.session.send(input=text, end_of_turn=True)
             
     async def listen_audio(self) -> AsyncIterator[bytes]:
         """Capture audio from microphone"""
@@ -138,11 +138,9 @@ class AudioLoop:
         
         # Create configuration with system instruction
         config = {
-            "generation_config": {
-                "response_modalities": ["AUDIO"],
-                "speech_config": {
-                    "voice_config": {"prebuilt_voice_config": {"voice_name": "Aoede"}},
-                },
+            "response_modalities": ["AUDIO"],
+            "speech_config": {
+                "voice_config": {"prebuilt_voice_config": {"voice_name": "Aoede"}},
             },
             "system_instruction": SYSTEM_INSTRUCTION,
         }
@@ -157,7 +155,7 @@ class AudioLoop:
             # Start audio tasks
             async def send_audio():
                 async for chunk in self.listen_audio():
-                    await session.send({"audio": chunk})
+                    await session.send(input=chunk)
                     
             send_task = asyncio.create_task(send_audio())
             receive_task = asyncio.create_task(self.receive_audio())
