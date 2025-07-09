@@ -326,10 +326,7 @@ wss.on('connection', (ws) => {
           if (ttsNarrator && ttsNarrator.readyState === ttsNarrator.OPEN) {
             ttsNarrator.send(JSON.stringify(ttsToggleMessage));
             console.log(`Sent TTS toggle to TTS Narrator: ${message.enabled}`);
-            // Store the requesting client for later confirmation
-            if (!ws._pendingTTSToggle) {
-              ws._pendingTTSToggle = true;
-            }
+            // Don't send immediate confirmation - wait for TTS narrator to confirm
           } else {
             console.log('TTS Narrator not connected');
             ws.send(JSON.stringify({
@@ -346,11 +343,18 @@ wss.on('connection', (ws) => {
           };
           const messageStr = JSON.stringify(confirmMessage);
           
+          let sentCount = 0;
           for (const transcriber of clients.transcribers) {
             if (transcriber.readyState === transcriber.OPEN) {
               transcriber.send(messageStr);
-              console.log(`Sent TTS state confirmation to transcriber: ${message.enabled}`);
+              sentCount++;
+              console.log(`Sent TTS state confirmation to transcriber #${sentCount}: ${message.enabled}`);
             }
+          }
+          console.log(`Total transcribers notified: ${sentCount}`);
+          
+          if (sentCount === 0) {
+            console.log('WARNING: No transcribers connected to receive TTS state confirmation');
           }
         } else {
           console.log(`Unknown message type: ${message.type}`);

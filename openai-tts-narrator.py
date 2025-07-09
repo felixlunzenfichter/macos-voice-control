@@ -82,11 +82,15 @@ class OpenAITTSNarrator:
         """Play PCM audio data using pygame (supports immediate stop)"""
         try:
             with self.audio_lock:
+                # Check if mixer is initialized and TTS is enabled
+                if not pygame.mixer.get_init() or not self.tts_enabled:
+                    print("🔇 Audio system not ready or TTS disabled")
+                    return
+                    
                 # Stop any currently playing audio
                 if self.current_channel and self.current_channel.get_busy():
                     self.current_channel.stop()
                 pygame.mixer.stop()  # Stop all channels
-                pygame.mixer.music.stop()
                 
                 # Convert raw PCM to pygame Sound
                 sound = pygame.mixer.Sound(buffer=audio_data)
@@ -98,10 +102,10 @@ class OpenAITTSNarrator:
                 while self.current_channel and self.current_channel.get_busy():
                     if not self.tts_enabled:
                         # Stop immediately if TTS is disabled
-                        self.current_channel.set_volume(0)  # Mute first
+                        self.current_channel.set_volume(0)  # Instant mute
                         self.current_channel.stop()
+                        pygame.mixer.fadeout(50)  # Quick fadeout
                         pygame.mixer.stop()  # Stop all sounds
-                        pygame.mixer.music.stop()
                         print("🔇 Audio playback stopped - TTS disabled")
                         break
                     pygame.time.wait(10)  # Check every 10ms
@@ -278,16 +282,29 @@ class OpenAITTSNarrator:
                         status = "enabled" if self.tts_enabled else "disabled"
                         print(f"🔊 TTS {status} via toggle command")
                         
-                        # If TTS is being disabled, stop any currently playing audio
+                        # If TTS is being disabled, stop audio immediately
                         if not self.tts_enabled:
                             with self.audio_lock:
-                                # Stop the specific channel if it's playing
+                                # Immediate stop using multiple methods
                                 if self.current_channel and self.current_channel.get_busy():
-                                    self.current_channel.set_volume(0)  # Mute first
+                                    self.current_channel.set_volume(0)  # Instant mute
                                     self.current_channel.stop()
-                                pygame.mixer.stop()  # Stop all playing sounds
-                                pygame.mixer.music.stop()  # Also stop music channel
-                                print("🔇 Stopped all playing audio")
+                                
+                                # Fadeout all channels very quickly (50ms)
+                                pygame.mixer.fadeout(50)
+                                
+                                # Also stop all channels directly
+                                pygame.mixer.stop()
+                                
+                                # Clear channel reference
+                                self.current_channel = None
+                                print("🔇 Audio stopped immediately")
+                        else:
+                            # Ensure audio system is ready when enabling TTS
+                            with self.audio_lock:
+                                if not pygame.mixer.get_init():
+                                    pygame.mixer.init(frequency=24000, size=-16, channels=1, buffer=512)
+                                    print("🔊 Audio system initialized")
                         
                         # Send confirmation back to backend
                         confirmation = {

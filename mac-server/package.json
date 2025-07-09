@@ -1,0 +1,23 @@
+{
+  "name": "mac-server",
+  "version": "2.0.0",
+  "description": "Mac server for voice transcription typing and TTS narration",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "transcription",
+    "claude-code",
+    "voice-control"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.6.1",
+    "openai": "^5.8.3",
+    "play-sound": "^1.1.6",
+    "ws": "^8.18.0"
+  }
+}
