@@ -33,6 +33,7 @@ const clients = {
 
 // Get current server statuses with active health check
 async function getServerStatuses() {
+  console.log('Checking server statuses...');
   const statuses = {
     "Backend": true,  // Backend is always true if we're responding
     "Mac Server": false
@@ -58,8 +59,11 @@ async function getServerStatuses() {
         });
       });
       
+      console.log(`Sending ping to Mac Server with ID: ${pingId}`);
       macServer.send(JSON.stringify({ type: 'ping', pingId }));
-      statuses["Mac Server"] = await pongPromise;
+      const isResponsive = await pongPromise;
+      console.log(`Mac Server ping response: ${isResponsive}`);
+      statuses["Mac Server"] = isResponsive;
     } catch (error) {
       console.log('Error pinging Mac Server:', error);
       statuses["Mac Server"] = false;

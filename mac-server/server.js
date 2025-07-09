@@ -34,13 +34,11 @@ class MacServer {
       console.log('Connected to transcription backend');
       this.isConnected = true;
       
-      // Send identification as Mac Server with TTS capability
+      // Send identification as Mac Server
       this.ws.send(JSON.stringify({
         type: 'identify',
         clientType: 'receiver',
-        clientName: 'Mac Server',
-        platform: 'mac',
-        capabilities: ['transcription', 'tts']
+        clientName: 'Mac Server'
       }));
     });
 
