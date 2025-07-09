@@ -45,6 +45,20 @@ cd /Users/felixlunzenfichter/Documents/macos-voice-control
 
 ## Service Management
 
+### CRITICAL DEPLOYMENT INSTRUCTIONS
+**See DEPLOYMENT.md for exact commands. The backend MUST have Google credentials or transcription will fail.**
+
+### Quick Start All Services:
+```bash
+# Backend with Google credentials (REQUIRED)
+cd /Users/felixlunzenfichter/Documents/macos-voice-control/backend
+tmux new-session -d -s backend "GOOGLE_APPLICATION_CREDENTIALS=/Users/felixlunzenfichter/.config/gcloud/legacy_credentials/id-speech-to-text-app@gen-lang-client-0047710702.iam.gserviceaccount.com/adc.json node server.js"
+
+# Mac server
+cd /Users/felixlunzenfichter/Documents/macos-voice-control/mac-server  
+tmux new-session -d -s mac-server "npm start"
+```
+
 ### Mac Server (Unified Service)
 The Mac server handles both voice transcription typing and TTS narration in a single Node.js process:
 

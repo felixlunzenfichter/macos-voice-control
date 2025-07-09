@@ -329,6 +329,8 @@ wss.on('connection', (ws) => {
           if (sentCount === 0) {
             console.log('WARNING: No transcribers connected to receive TTS state confirmation');
           }
+        } else if (message.type === 'pong') {
+          // Handle pong responses - no action needed, just prevents "Unknown message type" warnings
         } else {
           console.log(`Unknown message type: ${message.type}`);
         }
