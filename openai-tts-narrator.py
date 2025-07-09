@@ -18,8 +18,12 @@ import sys
 import json
 from pathlib import Path
 from openai import OpenAI
-import pyaudio
+import pygame
+import time
 import io
+import websockets
+import logging
+import threading
 
 # Load .env file if it exists
 env_path = Path(__file__).parent / '.env'
@@ -45,10 +49,16 @@ class OpenAITTSNarrator:
     
     def __init__(self):
         self.client = OpenAI(api_key=api_key)
-        self.pya = pyaudio.PyAudio()
+        # Initialize pygame mixer for audio playback
+        pygame.mixer.init(frequency=24000, size=-16, channels=1, buffer=512)
+        self.tts_enabled = True  # TTS is enabled by default
         self.file_positions = {}
         # Available voices: alloy, echo, fable, onyx, nova, shimmer
         self.voice = "fable"  # British accent
+        self.websocket = None
+        self.backend_url = "ws://localhost:8080"  # Local backend
+        self.audio_lock = threading.Lock()  # Lock for audio playback
+        self.current_channel = None  # Track current playing channel
         
     def text_to_speech(self, text):
         """Convert text to speech using OpenAI TTS"""
@@ -68,63 +78,62 @@ class OpenAITTSNarrator:
             print(f"Error generating speech: {e}")
             return None
             
-    def play_audio(self, audio_data):
-        """Play PCM audio data through speakers"""
+    def play_audio_with_pygame(self, audio_data):
+        """Play PCM audio data using pygame (supports immediate stop)"""
         try:
-            # Reinitialize PyAudio to detect device changes
-            self.pya.terminate()
-            self.pya = pyaudio.PyAudio()
-            
-            # OpenAI returns 24kHz 16-bit mono PCM
-            # Try to use the first output device (usually external audio)
-            output_device = None
-            for i in range(self.pya.get_device_count()):
-                info = self.pya.get_device_info_by_index(i)
-                if info['maxOutputChannels'] > 0 and 'AirPods Max' in info['name']:
-                    output_device = i
-                    print(f"🎧 Using output device: {info['name']} (index {i})")
-                    break
-            
-            if output_device is None:
-                print("❌ AirPods Max not found! Audio will not play.")
-                print("Available output devices:")
-                for i in range(self.pya.get_device_count()):
-                    info = self.pya.get_device_info_by_index(i)
-                    if info['maxOutputChannels'] > 0:
-                        print(f"  {i}: {info['name']}")
-                return  # Don't play audio if AirPods not found
-            
-            stream = self.pya.open(
-                format=pyaudio.paInt16,
-                channels=1,
-                rate=24000,
-                output=True,
-                output_device_index=output_device,
-                frames_per_buffer=CHUNK_SIZE
-            )
-            
-            # Play audio in chunks
-            for i in range(0, len(audio_data), CHUNK_SIZE):
-                chunk = audio_data[i:i + CHUNK_SIZE]
-                stream.write(chunk)
-            
-            stream.stop_stream()
-            stream.close()
+            with self.audio_lock:
+                # Stop any currently playing audio
+                if self.current_channel and self.current_channel.get_busy():
+                    self.current_channel.stop()
+                pygame.mixer.stop()  # Stop all channels
+                pygame.mixer.music.stop()
+                
+                # Convert raw PCM to pygame Sound
+                sound = pygame.mixer.Sound(buffer=audio_data)
+                
+                # Play the sound
+                self.current_channel = sound.play()
+                
+                # Wait for playback to complete, but check TTS status
+                while self.current_channel and self.current_channel.get_busy():
+                    if not self.tts_enabled:
+                        # Stop immediately if TTS is disabled
+                        self.current_channel.set_volume(0)  # Mute first
+                        self.current_channel.stop()
+                        pygame.mixer.stop()  # Stop all sounds
+                        pygame.mixer.music.stop()
+                        print("🔇 Audio playback stopped - TTS disabled")
+                        break
+                    pygame.time.wait(10)  # Check every 10ms
+                
+                # Clear channel reference when done
+                self.current_channel = None
             
         except Exception as e:
             print(f"Error playing audio: {e}")
             
+    def check_airpods_connected(self):
+        """Check if AirPods Max are connected"""
+        # With pygame, we don't need to check specific devices
+        # Audio will play through the default output device
+        # Return True to indicate we can play audio
+        return True
+    
     def narrate_text(self, text):
         """Convert text to speech and play it"""
-        # Don't limit text - narrate everything
+        # Check if TTS is enabled
+        if not self.tts_enabled:
+            print("🔇 TTS is disabled - skipping narration")
+            return
+            
         print(f"🗣️ Narrating: {text[:100]}..." if len(text) > 100 else f"🗣️ Narrating: {text}")
         
         # Generate speech
         audio_data = self.text_to_speech(text)
         
         if audio_data:
-            # Play the audio
-            self.play_audio(audio_data)
+            # Play the audio using pygame (supports immediate stop)
+            self.play_audio_with_pygame(audio_data)
         else:
             print("✗ Failed to generate speech")
             
@@ -226,21 +235,108 @@ class OpenAITTSNarrator:
             words = message.split()[:8]  # First 8 words
             return " ".join(words)
             
+    async def connect_to_backend(self):
+        """Connect to backend WebSocket server"""
+        try:
+            self.websocket = await websockets.connect(self.backend_url)
+            
+            # Identify as TTS Narrator
+            await self.websocket.send(json.dumps({
+                "type": "identify",
+                "clientType": "receiver",
+                "clientName": "TTS Narrator"
+            }))
+            
+            print(f"✅ Connected to backend at {self.backend_url}")
+            
+        except Exception as e:
+            print(f"⚠️  Could not connect to backend: {e}")
+            self.websocket = None
+    
+    async def handle_backend_messages(self):
+        """Handle messages from backend (mainly pings)"""
+        if not self.websocket:
+            return
+            
+        try:
+            async for message in self.websocket:
+                try:
+                    data = json.loads(message)
+                    
+                    # Respond to pings
+                    if data.get('type') == 'ping':
+                        ping_id = data.get('pingId')
+                        pong_response = {
+                            "type": "pong",
+                            "pingId": ping_id
+                        }
+                        await self.websocket.send(json.dumps(pong_response))
+                    
+                    # Handle TTS toggle
+                    elif data.get('type') == 'ttsToggle':
+                        self.tts_enabled = data.get('enabled', True)
+                        status = "enabled" if self.tts_enabled else "disabled"
+                        print(f"🔊 TTS {status} via toggle command")
+                        
+                        # If TTS is being disabled, stop any currently playing audio
+                        if not self.tts_enabled:
+                            with self.audio_lock:
+                                # Stop the specific channel if it's playing
+                                if self.current_channel and self.current_channel.get_busy():
+                                    self.current_channel.set_volume(0)  # Mute first
+                                    self.current_channel.stop()
+                                pygame.mixer.stop()  # Stop all playing sounds
+                                pygame.mixer.music.stop()  # Also stop music channel
+                                print("🔇 Stopped all playing audio")
+                        
+                        # Send confirmation back to backend
+                        confirmation = {
+                            "type": "ttsStateConfirm",
+                            "enabled": self.tts_enabled
+                        }
+                        await self.websocket.send(json.dumps(confirmation))
+                        print(f"✅ Sent TTS state confirmation: {self.tts_enabled}")
+                        
+                except json.JSONDecodeError:
+                    continue
+                    
+        except websockets.exceptions.ConnectionClosed:
+            print("⚠️  Backend connection closed")
+            self.websocket = None
+        except Exception as e:
+            print(f"⚠️  Error handling backend messages: {e}")
+            self.websocket = None
+    
     async def run(self):
         """Main event loop"""
         print("OpenAI TTS Narrator")
         print(f"Using voice: {self.voice} (tts-1 model @ $15/1M chars)")
+        print("Connecting to backend...")
+        
+        # Connect to backend for status monitoring
+        await self.connect_to_backend()
+        
         print("Ready to narrate Claude messages...")
         print()
         
         try:
-            await self.monitor_transcripts()
+            # Run both tasks concurrently
+            if self.websocket:
+                await asyncio.gather(
+                    self.monitor_transcripts(),
+                    self.handle_backend_messages()
+                )
+            else:
+                # Just monitor transcripts if no backend connection
+                await self.monitor_transcripts()
         except KeyboardInterrupt:
             print("\nShutting down narrator...")
         except Exception as e:
             print(f"Error: {e}")
         finally:
-            self.pya.terminate()
+            if self.websocket:
+                await self.websocket.close()
+            pygame.mixer.quit()
 
 
 async def main():

@@ -1,0 +1,17 @@
+{
+  "name": "mac-transcription-server",
+  "version": "1.0.0",
+  "description": "Local server to receive transcriptions and control Claude Code",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": ["transcription", "claude-code", "voice-control"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "ws": "^8.18.0",
+    "dotenv": "^16.4.7"
+  }
+}
