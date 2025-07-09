@@ -35,20 +35,19 @@ const clients = {
 async function getServerStatuses() {
   const statuses = {
     "Backend": true,  // Backend is always true if we're responding
-    "Mac Receiver": false,
-    "TTS Narrator": false
+    "Mac Server": false
   };
   
-  // Check if Mac Receiver is actually responsive
-  const macReceiver = clients.receivers.get("Mac Receiver");
-  if (macReceiver && macReceiver.readyState === 1) { // 1 = OPEN
+  // Check if Mac Server is actually responsive
+  const macServer = clients.receivers.get("Mac Server");
+  if (macServer && macServer.readyState === 1) { // 1 = OPEN
     try {
       // Send ping and wait for pong
       const pingId = Date.now().toString();
       const pongPromise = new Promise((resolve) => {
         const timeout = setTimeout(() => resolve(false), 1000); // 1 second timeout
         
-        macReceiver.once('message', (data) => {
+        macServer.once('message', (data) => {
           try {
             const msg = JSON.parse(data.toString());
             if (msg.type === 'pong' && msg.pingId === pingId) {
@@ -59,41 +58,15 @@ async function getServerStatuses() {
         });
       });
       
-      macReceiver.send(JSON.stringify({ type: 'ping', pingId }));
-      statuses["Mac Receiver"] = await pongPromise;
+      macServer.send(JSON.stringify({ type: 'ping', pingId }));
+      statuses["Mac Server"] = await pongPromise;
     } catch (error) {
-      console.log('Error pinging Mac Receiver:', error);
-      statuses["Mac Receiver"] = false;
+      console.log('Error pinging Mac Server:', error);
+      statuses["Mac Server"] = false;
     }
   }
   
-  // Check if TTS Narrator is connected
-  const ttsNarrator = clients.receivers.get("TTS Narrator");
-  if (ttsNarrator && ttsNarrator.readyState === 1) { // 1 = OPEN
-    try {
-      // Send ping and wait for pong
-      const pingId = Date.now().toString();
-      const pongPromise = new Promise((resolve) => {
-        const timeout = setTimeout(() => resolve(false), 1000); // 1 second timeout
-        
-        ttsNarrator.once('message', (data) => {
-          try {
-            const msg = JSON.parse(data.toString());
-            if (msg.type === 'pong' && msg.pingId === pingId) {
-              clearTimeout(timeout);
-              resolve(true);
-            }
-          } catch (e) {}
-        });
-      });
-      
-      ttsNarrator.send(JSON.stringify({ type: 'ping', pingId }));
-      statuses["TTS Narrator"] = await pongPromise;
-    } catch (error) {
-      console.log('Error pinging TTS Narrator:', error);
-      statuses["TTS Narrator"] = false;
-    }
-  }
+  // TTS is now integrated into Mac Server, no separate check needed
   
   return statuses;
 }
@@ -312,7 +285,7 @@ wss.on('connection', (ws) => {
           }
         } else if (message.type === 'ttsToggle') {
           console.log(`Received TTS toggle request: ${message.enabled}`);
-          // Forward TTS toggle to TTS Narrator
+          // Forward TTS toggle to Mac Server
           const ttsToggleMessage = {
             type: 'ttsToggle',
             enabled: message.enabled,
@@ -321,21 +294,21 @@ wss.on('connection', (ws) => {
           
           console.log(`Forwarding TTS toggle: ${message.enabled}`);
           
-          // Send specifically to TTS Narrator
-          const ttsNarrator = clients.receivers.get("TTS Narrator");
-          if (ttsNarrator && ttsNarrator.readyState === ttsNarrator.OPEN) {
-            ttsNarrator.send(JSON.stringify(ttsToggleMessage));
-            console.log(`Sent TTS toggle to TTS Narrator: ${message.enabled}`);
-            // Don't send immediate confirmation - wait for TTS narrator to confirm
+          // Send to Mac Server
+          const macServer = clients.receivers.get("Mac Server");
+          if (macServer && macServer.readyState === macServer.OPEN) {
+            macServer.send(JSON.stringify(ttsToggleMessage));
+            console.log(`Sent TTS toggle to Mac Server: ${message.enabled}`);
+            // Don't send immediate confirmation - wait for Mac Server to confirm
           } else {
-            console.log('TTS Narrator not connected');
+            console.log('Mac Server not connected');
             ws.send(JSON.stringify({
               type: 'error',
-              error: 'TTS Narrator not connected'
+              error: 'Mac Server not connected'
             }));
           }
         } else if (message.type === 'ttsStateConfirm') {
-          console.log(`Received TTS state confirmation from TTS Narrator: ${message.enabled}`);
+          console.log(`Received TTS state confirmation from Mac Server: ${message.enabled}`);
           // Forward confirmation to all transcribers (iPhone apps)
           const confirmMessage = {
             type: 'ttsState',
