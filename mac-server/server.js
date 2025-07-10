@@ -116,6 +116,42 @@ class MacServer {
   typeTranscription(text) {
     if (!text || text.trim() === '') return;
     
+    // First check if claude_orchestrator session exists
+    exec('tmux has-session -t claude_orchestrator 2>/dev/null', (error) => {
+      if (!error) {
+        // Orchestrator exists, send to coordination pane
+        console.log('Orchestrator found, sending to coordination pane');
+        // Send text first, then Enter separately
+        const escapedText = text.replace(/"/g, '\\"').replace(/'/g, "'\\''");
+        const textCommand = `tmux send-keys -t claude_orchestrator:0.0 '${escapedText}'`;
+        const enterCommand = `tmux send-keys -t claude_orchestrator:0.0 C-m`;
+        
+        // Send text first
+        exec(textCommand, (err) => {
+          if (err) {
+            console.error('Error sending text to orchestrator:', err);
+            // Fallback to normal typing
+            this.typeToActiveTerminal(text);
+          } else {
+            // Then send Enter
+            exec(enterCommand, (err2) => {
+              if (err2) {
+                console.error('Error sending Enter:', err2);
+              } else {
+                console.log('Successfully sent to orchestrator');
+              }
+            });
+          }
+        });
+      } else {
+        // No orchestrator, type normally
+        console.log('No orchestrator found, typing to active terminal');
+        this.typeToActiveTerminal(text);
+      }
+    });
+  }
+  
+  typeToActiveTerminal(text) {
     // Write text to temporary file to avoid escaping issues
     const fs = require('fs');
     const tempFile = `/tmp/transcription_${Date.now()}.txt`;
@@ -350,41 +386,105 @@ class MacServer {
     return newMessages;
   }
 
-  startTranscriptMonitoring() {
-    const transcriptDir = path.join(process.env.HOME, '.claude', 'projects', '-Users-felixlunzenfichter');
+  getActiveInstance() {
+    // Returns the most recently modified Claude instance
+    const projectsDir = path.join(process.env.HOME, '.claude', 'projects');
+    let mostRecent = null;
+    let latestTime = 0;
     
-    // Initialize file positions to current end
-    console.log('Initializing transcript file positions...');
     try {
-      const files = fs.readdirSync(transcriptDir).filter(f => f.endsWith('.jsonl'));
-      for (const file of files) {
-        const filePath = path.join(transcriptDir, file);
-        const stats = fs.statSync(filePath);
-        this.filePositions[filePath] = stats.size;
+      const projectDirs = fs.readdirSync(projectsDir)
+        .map(dir => path.join(projectsDir, dir))
+        .filter(dir => fs.statSync(dir).isDirectory());
+      
+      for (const projectDir of projectDirs) {
+        try {
+          const files = fs.readdirSync(projectDir).filter(f => f.endsWith('.jsonl'));
+          for (const file of files) {
+            const filePath = path.join(projectDir, file);
+            const mtime = fs.statSync(filePath).mtime.getTime();
+            if (mtime > latestTime) {
+              latestTime = mtime;
+              mostRecent = {
+                project: path.basename(projectDir),
+                file: filePath,
+                lastModified: new Date(mtime)
+              };
+            }
+          }
+        } catch (error) {
+          // Skip directories we can't read
+        }
       }
-      console.log(`Tracking ${Object.keys(this.filePositions).length} transcript files`);
     } catch (error) {
-      console.error('Error initializing transcript monitoring:', error);
-      return;
+      console.error('Error finding active instance:', error);
     }
+    
+    return mostRecent;
+  }
 
-    // Monitor for new messages
+  startTranscriptMonitoring() {
+    const projectsDir = path.join(process.env.HOME, '.claude', 'projects');
+    
+    console.log('Starting dynamic Claude instance monitoring...');
+    
+    // Monitor for new messages from all Claude instances
     this.transcriptMonitorInterval = setInterval(async () => {
       try {
-        const files = fs.readdirSync(transcriptDir)
-          .filter(f => f.endsWith('.jsonl'))
-          .map(f => path.join(transcriptDir, f))
-          .sort((a, b) => fs.statSync(b).mtime - fs.statSync(a).mtime);
+        // Find all project directories
+        const projectDirs = fs.readdirSync(projectsDir)
+          .map(dir => path.join(projectsDir, dir))
+          .filter(dir => fs.statSync(dir).isDirectory());
         
-        if (files.length > 0) {
-          const latestFile = files[0];
-          const newMessages = this.extractNewMessages(latestFile);
+        let allTranscriptFiles = [];
+        
+        // Collect transcript files from all project directories
+        for (const projectDir of projectDirs) {
+          try {
+            const files = fs.readdirSync(projectDir)
+              .filter(f => f.endsWith('.jsonl'))
+              .map(f => ({
+                path: path.join(projectDir, f),
+                project: path.basename(projectDir),
+                mtime: fs.statSync(path.join(projectDir, f)).mtime
+              }));
+            allTranscriptFiles = allTranscriptFiles.concat(files);
+          } catch (error) {
+            // Skip directories we can't read
+          }
+        }
+        
+        // Sort by modification time to find most recently active
+        allTranscriptFiles.sort((a, b) => b.mtime - a.mtime);
+        
+        // Process files from most recently modified
+        for (const fileInfo of allTranscriptFiles) {
+          // Initialize position if not tracked
+          if (!this.filePositions[fileInfo.path]) {
+            const stats = fs.statSync(fileInfo.path);
+            this.filePositions[fileInfo.path] = stats.size;
+            console.log(`Now tracking: ${fileInfo.project}`);
+          }
+          
+          // Check for new messages
+          const newMessages = this.extractNewMessages(fileInfo.path);
           
           // Narrate each new message
           for (const message of newMessages) {
+            console.log(`[${fileInfo.project}] New message detected`);
             await this.narrate(message);
           }
         }
+        
+        // Clean up tracking for deleted files
+        const existingFiles = new Set(allTranscriptFiles.map(f => f.path));
+        for (const trackedFile of Object.keys(this.filePositions)) {
+          if (!existingFiles.has(trackedFile)) {
+            delete this.filePositions[trackedFile];
+            console.log(`Stopped tracking deleted file: ${path.basename(trackedFile)}`);
+          }
+        }
+        
       } catch (error) {
         console.error('Error monitoring transcripts:', error);
       }
