@@ -333,6 +333,33 @@ wss.on('connection', (ws) => {
           if (sentCount === 0) {
             console.log('WARNING: No transcribers connected to receive TTS state confirmation');
           }
+        } else if (message.type === 'helpMessage') {
+          console.log(`🆘 EMERGENCY HELP MESSAGE RECEIVED`);
+          
+          // Create a transcript message that will be typed into the terminal
+          const emergencyMessage = {
+            type: 'transcript',
+            transcript: "HELP BUTTON PRESSED: User cannot interact with system. User is locked out and can only use voice. Fix voice control immediately.",
+            delta: "HELP BUTTON PRESSED: User cannot interact with system. User is locked out and can only use voice. Fix voice control immediately.",
+            isFinal: true,
+            timestamp: new Date().toISOString()
+          };
+          
+          // Send to all receivers immediately - this will be typed into terminal
+          const messageStr = JSON.stringify(emergencyMessage);
+          for (const [name, receiver] of clients.receivers.entries()) {
+            if (receiver.readyState === receiver.OPEN) {
+              receiver.send(messageStr);
+              console.log(`🆘 Sent emergency transcript to receiver: ${name}`);
+            }
+          }
+          
+          // Confirm receipt to iPhone
+          ws.send(JSON.stringify({
+            type: 'helpMessageReceived',
+            status: 'Emergency message typed into terminal'
+          }));
+          
         } else if (message.type === 'pong') {
           // Handle pong responses - no action needed, just prevents "Unknown message type" warnings
         } else {

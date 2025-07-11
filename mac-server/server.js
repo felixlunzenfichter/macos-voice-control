@@ -7,9 +7,26 @@ const player = require('play-sound')();
 require('dotenv').config();
 
 // Configuration
-const BACKEND_URL = process.env.BACKEND_URL || 'ws://192.168.1.9:8080';
+const BACKEND_URL = process.env.BACKEND_URL || 'ws://192.168.2.223:8080';
 const RECONNECT_DELAY = 5000; // 5 seconds
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+
+// Voice ranking (Felix's preferences)
+const VOICE_RANKING = {
+  1: 'fable',   // Favorite - main Claude voice (root)
+  2: 'nova',    // Worker 1
+  3: 'shimmer', // Worker 2
+  4: 'alloy',   // Worker 3
+  5: 'onyx',    // Worker 4
+  6: 'echo'     // Worker 5
+};
+
+// Track voice assignments
+const voiceAssignments = {
+  'root': 'fable',
+  // workers will be assigned dynamically
+};
+let nextVoiceIndex = 2; // Start with nova for first worker
 
 // Initialize OpenAI client if API key exists
 const openai = OPENAI_API_KEY ? new OpenAI({ apiKey: OPENAI_API_KEY }) : null;
@@ -23,6 +40,8 @@ class MacServer {
     this.currentAudioProcess = null;
     this.filePositions = {};
     this.transcriptMonitorInterval = null;
+    this.audioQueue = [];
+    this.isPlayingAudio = false;
   }
 
   connect() {
@@ -255,11 +274,17 @@ class MacServer {
     this.ttsEnabled = enabled;
     console.log(`🔊 TTS ${enabled ? 'enabled' : 'disabled'} via toggle command`);
     
-    // If disabling, kill any playing audio immediately
-    if (!this.ttsEnabled && this.currentAudioProcess) {
-      console.log(`🔇 Killing audio process PID: ${this.currentAudioProcess.pid}`);
-      this.currentAudioProcess.kill();
-      this.currentAudioProcess = null;
+    // If disabling, kill any playing audio immediately and clear queue
+    if (!this.ttsEnabled) {
+      if (this.currentAudioProcess) {
+        console.log(`🔇 Killing audio process PID: ${this.currentAudioProcess.pid}`);
+        this.currentAudioProcess.kill();
+        this.currentAudioProcess = null;
+      }
+      // Clear the audio queue
+      this.audioQueue = [];
+      this.isPlayingAudio = false;
+      console.log('🔇 Cleared audio queue');
     }
     
     // Send confirmation back to backend
@@ -272,7 +297,7 @@ class MacServer {
     }
   }
 
-  async textToSpeech(text) {
+  async textToSpeech(text, voice = 'fable') {
     if (!openai) {
       console.error('OpenAI client not initialized');
       return null;
@@ -281,7 +306,7 @@ class MacServer {
     try {
       const mp3 = await openai.audio.speech.create({
         model: 'tts-1',
-        voice: 'fable',
+        voice: voice,
         input: text,
       });
 
@@ -328,18 +353,46 @@ class MacServer {
     });
   }
 
-  async narrate(text) {
+  async narrate(text, voice = 'fable') {
     if (!this.ttsEnabled) {
       console.log('🔇 TTS is disabled - skipping narration');
       return;
     }
 
-    console.log(`🗣️ Narrating: ${text.length > 100 ? text.substring(0, 100) + '...' : text}`);
+    console.log(`🗣️ Adding to queue (${voice}): ${text.length > 100 ? text.substring(0, 100) + '...' : text}`);
     
-    const audioFile = await this.textToSpeech(text);
-    if (audioFile) {
-      await this.playAudio(audioFile);
+    // Add to queue with voice
+    this.audioQueue.push({ text, voice });
+    console.log(`📋 Queue length: ${this.audioQueue.length}, Playing: ${this.isPlayingAudio}`);
+    
+    // Process queue if not already playing
+    if (!this.isPlayingAudio) {
+      this.processAudioQueue();
     }
+  }
+
+  async processAudioQueue() {
+    if (this.audioQueue.length === 0) {
+      this.isPlayingAudio = false;
+      return;
+    }
+
+    this.isPlayingAudio = true;
+    
+    while (this.audioQueue.length > 0 && this.ttsEnabled) {
+      const item = this.audioQueue.shift();
+      const text = typeof item === 'string' ? item : item.text;
+      const voice = typeof item === 'string' ? 'fable' : item.voice;
+      
+      console.log(`▶️  Processing from queue (${voice}): ${text.length > 50 ? text.substring(0, 50) + '...' : text}`);
+      
+      const audioFile = await this.textToSpeech(text, voice);
+      if (audioFile) {
+        await this.playAudio(audioFile);
+      }
+    }
+    
+    this.isPlayingAudio = false;
   }
 
   extractNewMessages(jsonlPath) {
