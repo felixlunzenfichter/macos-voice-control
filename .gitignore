@@ -4,3 +4,10 @@ node_modules/
 *.log
 dist/
 build/
+
+# iOS build artifacts
+ios-app/build/
+ios-app/DerivedData/
+*.xcuserstate
+ios-app/ClaudeCodeMicrophone.xcodeproj/xcuserdata/
+ios-app/ClaudeCodeMicrophone.xcodeproj/project.xcworkspace/xcuserdata/
