@@ -42,6 +42,7 @@ class MacServer {
     this.transcriptMonitorInterval = null;
     this.audioQueue = [];
     this.isPlayingAudio = false;
+    this.micActive = false;  // Track iPhone mic status
   }
 
   connect() {
@@ -121,6 +122,11 @@ class MacServer {
       case 'ttsToggle':
         // Handle TTS toggle from iPhone app
         this.handleTTSToggle(message.enabled);
+        break;
+        
+      case 'micStatus':
+        // Handle mic status change from iPhone app
+        this.handleMicStatus(message.active);
         break;
         
       case 'ping':
@@ -274,17 +280,23 @@ class MacServer {
     this.ttsEnabled = enabled;
     console.log(`🔊 TTS ${enabled ? 'enabled' : 'disabled'} via toggle command`);
     
-    // If disabling, kill any playing audio immediately and clear queue
-    if (!this.ttsEnabled) {
-      if (this.currentAudioProcess) {
-        console.log(`🔇 Killing audio process PID: ${this.currentAudioProcess.pid}`);
-        this.currentAudioProcess.kill();
-        this.currentAudioProcess = null;
-      }
-      // Clear the audio queue
-      this.audioQueue = [];
-      this.isPlayingAudio = false;
-      console.log('🔇 Cleared audio queue');
+    // Always kill any playing audio and clear queue on toggle (both enable and disable)
+    if (this.currentAudioProcess) {
+      console.log(`🔇 Killing audio process PID: ${this.currentAudioProcess.pid}`);
+      this.currentAudioProcess.kill();
+      this.currentAudioProcess = null;
+    }
+    
+    // Clear the audio queue on any toggle
+    const queueLength = this.audioQueue.length;
+    this.audioQueue = [];
+    this.isPlayingAudio = false;
+    console.log(`🗑️  Cleared audio queue (${queueLength} items removed) on TTS toggle`);
+    
+    // Clean up any paused audio file
+    if (this.pausedAudioFile && fs.existsSync(this.pausedAudioFile)) {
+      fs.unlinkSync(this.pausedAudioFile);
+      this.pausedAudioFile = null;
     }
     
     // Send confirmation back to backend
@@ -294,6 +306,39 @@ class MacServer {
         enabled: this.ttsEnabled
       }));
       console.log(`✅ Sent TTS state confirmation: ${this.ttsEnabled}`);
+    }
+  }
+
+  async handleMicStatus(active) {
+    const previousStatus = this.micActive;
+    this.micActive = active;
+    console.log(`🎤 Mic status changed: ${active ? 'ACTIVE' : 'INACTIVE'}`);
+    
+    if (active) {
+      // Mic is now active - stop any playing audio and clear queue
+      if (this.currentAudioProcess) {
+        console.log(`🛑 Stopping audio - mic is active`);
+        this.currentAudioProcess.kill();
+        this.currentAudioProcess = null;
+      }
+      
+      // Clear the entire audio queue
+      const queueLength = this.audioQueue.length;
+      this.audioQueue = [];
+      this.isPlayingAudio = false;
+      console.log(`🗑️  Cleared audio queue (${queueLength} items removed) - mic is active`);
+      
+      // Clean up any paused audio file
+      if (this.pausedAudioFile && fs.existsSync(this.pausedAudioFile)) {
+        fs.unlinkSync(this.pausedAudioFile);
+        this.pausedAudioFile = null;
+      }
+    } else if (!active && previousStatus) {
+      // Mic just became inactive - ready to process new audio
+      console.log(`▶️  Mic inactive - ready for new audio`);
+      
+      // Don't play old audio - queue is already cleared
+      // New audio will be processed as it comes in
     }
   }
 
@@ -324,6 +369,13 @@ class MacServer {
   async playAudio(audioFile) {
     if (!this.ttsEnabled) {
       console.log('🔇 TTS disabled - not playing audio');
+      if (fs.existsSync(audioFile)) fs.unlinkSync(audioFile);
+      return;
+    }
+
+    // Check if mic is active - if so, discard the audio
+    if (this.micActive) {
+      console.log('🎤 Mic is active - discarding audio');
       if (fs.existsSync(audioFile)) fs.unlinkSync(audioFile);
       return;
     }
@@ -363,11 +415,13 @@ class MacServer {
     
     // Add to queue with voice
     this.audioQueue.push({ text, voice });
-    console.log(`📋 Queue length: ${this.audioQueue.length}, Playing: ${this.isPlayingAudio}`);
+    console.log(`📋 Queue length: ${this.audioQueue.length}, Playing: ${this.isPlayingAudio}, Mic Active: ${this.micActive}`);
     
-    // Process queue if not already playing
-    if (!this.isPlayingAudio) {
+    // Process queue if not already playing and mic is not active
+    if (!this.isPlayingAudio && !this.micActive) {
       this.processAudioQueue();
+    } else if (this.micActive) {
+      console.log('🎤 Mic is active - queuing audio for later');
     }
   }
 
@@ -379,7 +433,7 @@ class MacServer {
 
     this.isPlayingAudio = true;
     
-    while (this.audioQueue.length > 0 && this.ttsEnabled) {
+    while (this.audioQueue.length > 0 && this.ttsEnabled && !this.micActive) {
       const item = this.audioQueue.shift();
       const text = typeof item === 'string' ? item : item.text;
       const voice = typeof item === 'string' ? 'fable' : item.voice;

@@ -360,6 +360,26 @@ wss.on('connection', (ws) => {
             status: 'Emergency message typed into terminal'
           }));
           
+        } else if (message.type === 'micStatus') {
+          console.log(`Received mic status: ${message.active ? 'ACTIVE' : 'INACTIVE'}`);
+          // Forward mic status to Mac Server
+          const micStatusMessage = {
+            type: 'micStatus',
+            active: message.active,
+            timestamp: new Date().toISOString()
+          };
+          
+          console.log(`Forwarding mic status to Mac Server: ${message.active ? 'active' : 'inactive'}`);
+          
+          // Send to Mac Server
+          const macServer = clients.receivers.get("Mac Server");
+          if (macServer && macServer.readyState === macServer.OPEN) {
+            macServer.send(JSON.stringify(micStatusMessage));
+            console.log(`Sent mic status to Mac Server`);
+          } else {
+            console.log('Mac Server not connected to receive mic status');
+          }
+          
         } else if (message.type === 'pong') {
           // Handle pong responses - no action needed, just prevents "Unknown message type" warnings
         } else {
