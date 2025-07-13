@@ -11,3 +11,7 @@ ios-app/DerivedData/
 *.xcuserstate
 ios-app/ClaudeCodeMicrophone.xcodeproj/xcuserdata/
 ios-app/ClaudeCodeMicrophone.xcodeproj/project.xcworkspace/xcuserdata/
+# iOS app build artifacts
+iOS\ app/build/
+iOS\ app/ClaudeCodeMicrophone.xcodeproj/xcuserdata/
+iOS\ app/ClaudeCodeMicrophone.xcodeproj/project.xcworkspace/xcuserdata/
