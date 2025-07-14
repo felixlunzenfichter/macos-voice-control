@@ -375,7 +375,7 @@ class GoogleBackend: NSObject {
                     } else {
                         // Interim transcript - show the full transcript
                         self.currentUtterance = transcript
-                        self.interimText = delta
+                        self.interimText = transcript
                         print("INTERIM TRANSCRIPT: '\(transcript)'")
                     }
                 }
