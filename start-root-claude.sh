@@ -10,9 +10,7 @@ tmux kill-session -t claude_orchestrator 2>/dev/null
 echo "" > /tmp/claude_workers.jsonl
 
 # Create new session with Claude in root directory using Sonnet for fast response
-# Using environment variable for model - set CLAUDE_COORDINATOR_MODEL to override
-CLAUDE_MODEL="${CLAUDE_COORDINATOR_MODEL:-sonnet}"
-tmux new-session -d -s claude_orchestrator "cd /Users/felixlunzenfichter && claude --model $CLAUDE_MODEL --dangerously-skip-permissions"
+tmux new-session -d -s claude_orchestrator "cd /Users/felixlunzenfichter && claude --model sonnet --dangerously-skip-permissions"
 
 # Wait for Claude to start
 sleep 2
