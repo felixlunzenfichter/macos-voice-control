@@ -1,0 +1,6 @@
+version: "Apple Swift version 6.1.2 (swiftlang-6.1.2.1.2 clang-1700.0.13.5)"
+options: "76d5427eda1f0dce3dc0e718105623382d326b0ad873b8af394b06eaa253c28e"
+build_start_time: [1752472867, 645879000]
+build_end_time: [1752472871, 47196000]
+inputs:
+  "/Users/felixlunzenfichter/Documents/macos-voice-control/ClaudeOrchestratorMonitor/ClaudeOrchestratorMonitorApp.swift": [1752472824, 777999310]

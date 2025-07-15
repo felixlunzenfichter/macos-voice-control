@@ -1,0 +1,12 @@
+{
+  "": {
+    "dependencies": "/Users/felixlunzenfichter/Documents/macos-voice-control/ClaudeOrchestratorMonitor/.build/arm64-apple-macosx/release/ClaudeOrchestratorMonitor.build/ClaudeOrchestratorMonitor.d",
+    "object": "/Users/felixlunzenfichter/Documents/macos-voice-control/ClaudeOrchestratorMonitor/.build/arm64-apple-macosx/release/ClaudeOrchestratorMonitor.build/ClaudeOrchestratorMonitor.o",
+    "swift-dependencies": "/Users/felixlunzenfichter/Documents/macos-voice-control/ClaudeOrchestratorMonitor/.build/arm64-apple-macosx/release/ClaudeOrchestratorMonitor.build/master.swiftdeps"
+  },
+  "/Users/felixlunzenfichter/Documents/macos-voice-control/ClaudeOrchestratorMonitor/ClaudeOrchestratorMonitorApp.swift": {
+    "object": "/Users/felixlunzenfichter/Documents/macos-voice-control/ClaudeOrchestratorMonitor/.build/arm64-apple-macosx/release/ClaudeOrchestratorMonitor.build/ClaudeOrchestratorMonitorApp.swift.o",
+    "swiftmodule": "/Users/felixlunzenfichter/Documents/macos-voice-control/ClaudeOrchestratorMonitor/.build/arm64-apple-macosx/release/ClaudeOrchestratorMonitor.build/ClaudeOrchestratorMonitorApp~partial.swiftmodule",
+    "swift-dependencies": "/Users/felixlunzenfichter/Documents/macos-voice-control/ClaudeOrchestratorMonitor/.build/arm64-apple-macosx/release/ClaudeOrchestratorMonitor.build/ClaudeOrchestratorMonitorApp.swiftdeps"
+  }
+}

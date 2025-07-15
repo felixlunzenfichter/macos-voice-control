@@ -1,0 +1,59 @@
+---
+triple:          'arm64-apple-darwin'
+binary-path:     '/Users/felixlunzenfichter/Documents/macos-voice-control/ClaudeOrchestratorMonitor/.build/arm64-apple-macosx/release/ClaudeOrchestratorMonitor'
+relocations:
+  - { offset: 0xEBC9B, size: 0x8, addend: 0x0, symName: '_$sSo7NSTimerCIeghg_ABIeyBhy_TR', symObjAddr: 0x684, symBinAddr: 0x100002748, symSize: 0x4C }
+  - { offset: 0xEBD00, size: 0x8, addend: 0x0, symName: '_$sIeg_IeyB_TR', symObjAddr: 0xBBC, symBinAddr: 0x100002C80, symSize: 0x2C }
+  - { offset: 0xEBD18, size: 0x8, addend: 0x0, symName: '_$sSo6CGRectVSbIegyd_ABSbIeyByd_TR', symObjAddr: 0xF10, symBinAddr: 0x100002FD4, symSize: 0x68 }
+  - { offset: 0xEBD30, size: 0x8, addend: 0x0, symName: '_$s25ClaudeOrchestratorMonitor11AppDelegateCfETo', symObjAddr: 0x17DC, symBinAddr: 0x1000038A0, symSize: 0x38 }
+  - { offset: 0xEBD5F, size: 0x8, addend: 0x0, symName: '_$s25ClaudeOrchestratorMonitor0abC3AppVMa', symObjAddr: 0x1864, symBinAddr: 0x100003928, symSize: 0x38 }
+  - { offset: 0xEBD73, size: 0x8, addend: 0x0, symName: '_$s25ClaudeOrchestratorMonitor11AppDelegateCMa', symObjAddr: 0x189C, symBinAddr: 0x100003960, symSize: 0x20 }
+  - { offset: 0xEBD87, size: 0x8, addend: 0x0, symName: '_$s25ClaudeOrchestratorMonitor0abC3AppVwCP', symObjAddr: 0x18BC, symBinAddr: 0x100003980, symSize: 0x40 }
+  - { offset: 0xEBD9B, size: 0x8, addend: 0x0, symName: ___swift_instantiateConcreteTypeFromMangledName, symObjAddr: 0x18FC, symBinAddr: 0x1000039C0, symSize: 0x44 }
+  - { offset: 0xEBDAF, size: 0x8, addend: 0x0, symName: '_$s25ClaudeOrchestratorMonitor0abC3AppVwxx', symObjAddr: 0x1940, symBinAddr: 0x100003A04, symSize: 0x38 }
+  - { offset: 0xEBDC3, size: 0x8, addend: 0x0, symName: '_$s25ClaudeOrchestratorMonitor0abC3AppVwcp', symObjAddr: 0x1978, symBinAddr: 0x100003A3C, symSize: 0x48 }
+  - { offset: 0xEBDD7, size: 0x8, addend: 0x0, symName: '_$s25ClaudeOrchestratorMonitor0abC3AppVwca', symObjAddr: 0x19C0, symBinAddr: 0x100003A84, symSize: 0x48 }
+  - { offset: 0xEBDEB, size: 0x8, addend: 0x0, symName: '_$s25ClaudeOrchestratorMonitor0abC3AppVwtk', symObjAddr: 0x1A08, symBinAddr: 0x100003ACC, symSize: 0x48 }
+  - { offset: 0xEBDFF, size: 0x8, addend: 0x0, symName: '_$s25ClaudeOrchestratorMonitor0abC3AppVwta', symObjAddr: 0x1A50, symBinAddr: 0x100003B14, symSize: 0x48 }
+  - { offset: 0xEBE13, size: 0x8, addend: 0x0, symName: '_$s25ClaudeOrchestratorMonitor0abC3AppVwet', symObjAddr: 0x1A98, symBinAddr: 0x100003B5C, symSize: 0xC }
+  - { offset: 0xEBE27, size: 0x8, addend: 0x0, symName: '_$s25ClaudeOrchestratorMonitor0abC3AppVwst', symObjAddr: 0x1AE4, symBinAddr: 0x100003BA8, symSize: 0xC }
+  - { offset: 0xEBE3B, size: 0x8, addend: 0x0, symName: '_$s25ClaudeOrchestratorMonitor0abC3AppVMr', symObjAddr: 0x1B34, symBinAddr: 0x100003BF8, symSize: 0x68 }
+  - { offset: 0xEBE4F, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI28NSApplicationDelegateAdaptorVy25ClaudeOrchestratorMonitor03AppD0CGMa', symObjAddr: 0x1B9C, symBinAddr: 0x100003C60, symSize: 0x50 }
+  - { offset: 0xEBE63, size: 0x8, addend: 0x0, symName: '_$s25ClaudeOrchestratorMonitor0abC3AppV7SwiftUI0D0AA4BodyAdEP_AD5ScenePWT', symObjAddr: 0x1BEC, symBinAddr: 0x100003CB0, symSize: 0x10 }
+  - { offset: 0xEBE77, size: 0x8, addend: 0x0, symName: ___swift_instantiateConcreteTypeFromMangledNameAbstract, symObjAddr: 0x1BFC, symBinAddr: 0x100003CC0, symSize: 0x48 }
+  - { offset: 0xEBE8B, size: 0x8, addend: 0x0, symName: '_$s25ClaudeOrchestratorMonitor11AppDelegateC04stopB0yyFyyScMYccfU_TA', symObjAddr: 0x1C68, symBinAddr: 0x100003D2C, symSize: 0x20 }
+  - { offset: 0xEBEBD, size: 0x8, addend: 0x0, symName: _block_copy_helper, symObjAddr: 0x1C88, symBinAddr: 0x100003D4C, symSize: 0x10 }
+  - { offset: 0xEBED1, size: 0x8, addend: 0x0, symName: _block_destroy_helper, symObjAddr: 0x1C98, symBinAddr: 0x100003D5C, symSize: 0x8 }
+  - { offset: 0xEBEE5, size: 0x8, addend: 0x0, symName: '_$s25ClaudeOrchestratorMonitor11AppDelegateC10updateIcon9isRunningySb_tFSbSo6CGRectVcfU_TA', symObjAddr: 0x1D30, symBinAddr: 0x100003DF4, symSize: 0x1B4 }
+  - { offset: 0xEBFBA, size: 0x8, addend: 0x0, symName: '_$s25ClaudeOrchestratorMonitor11AppDelegateC05checkB6StatusyyFyyScMYccfU_TA', symObjAddr: 0x1F08, symBinAddr: 0x100003FCC, symSize: 0x28 }
+  - { offset: 0xEBFEE, size: 0x8, addend: 0x0, symName: '_$ss15ContiguousArrayV16_createNewBuffer14bufferIsUnique15minimumCapacity13growForAppendySb_SiSbtFSo20NSRunningApplicationC_Tg5', symObjAddr: 0x1F30, symBinAddr: 0x100003FF4, symSize: 0x1C }
+  - { offset: 0xEC05E, size: 0x8, addend: 0x0, symName: '_$ss22_ContiguousArrayBufferV20_consumeAndCreateNew14bufferIsUnique15minimumCapacity13growForAppendAByxGSb_SiSbtFSo20NSRunningApplicationC_Tg5', symObjAddr: 0x1F4C, symBinAddr: 0x100004010, symSize: 0x134 }
+  - { offset: 0xEC14A, size: 0x8, addend: 0x0, symName: '_$ss29getContiguousArrayStorageType3fors01_bcD0CyxGmxm_tlFSo20NSRunningApplicationC_Ttg5', symObjAddr: 0x2080, symBinAddr: 0x100004144, symSize: 0x6C }
+  - { offset: 0xEC16D, size: 0x8, addend: 0x0, symName: '_$ss17_NativeDictionaryV12mutatingFind_8isUniques10_HashTableV6BucketV6bucket_Sb5foundtx_SbtFSS_SSTg5', symObjAddr: 0x20EC, symBinAddr: 0x1000041B0, symSize: 0xD0 }
+  - { offset: 0xEC1B1, size: 0x8, addend: 0x0, symName: '_$ss22__RawDictionaryStorageC4findys10_HashTableV6BucketV6bucket_Sb5foundtxSHRzlFSS_Tg5', symObjAddr: 0x21BC, symBinAddr: 0x100004280, symSize: 0x64 }
+  - { offset: 0xEC1FF, size: 0x8, addend: 0x0, symName: '_$ss22__RawDictionaryStorageC4find_9hashValues10_HashTableV6BucketV6bucket_Sb5foundtx_SitSHRzlFSS_Tg5', symObjAddr: 0x2220, symBinAddr: 0x1000042E4, symSize: 0xE0 }
+  - { offset: 0xEC282, size: 0x8, addend: 0x0, symName: '_$ss17_NativeDictionaryV4copyyyFSS_SSTg5', symObjAddr: 0x2300, symBinAddr: 0x1000043C4, symSize: 0x1D0 }
+  - { offset: 0xEC348, size: 0x8, addend: 0x0, symName: '_$ss17_NativeDictionaryV20_copyOrMoveAndResize8capacity12moveElementsySi_SbtFSS_SSTg5', symObjAddr: 0x24D0, symBinAddr: 0x100004594, symSize: 0x338 }
+  - { offset: 0xEC427, size: 0x8, addend: 0x0, symName: '_$s25ClaudeOrchestratorMonitor11AppDelegateC15startMonitoringyyFySo7NSTimerCYbcfU_TA', symObjAddr: 0x2808, symBinAddr: 0x1000048CC, symSize: 0x20 }
+  - { offset: 0xEC46F, size: 0x8, addend: 0x0, symName: '_$ss12_ArrayBufferV19_getElementSlowPathyyXlSiFSo20NSRunningApplicationC_Tg5', symObjAddr: 0x2828, symBinAddr: 0x1000048EC, symSize: 0x1D4 }
+  - { offset: 0xEC5EB, size: 0x8, addend: 0x0, symName: '_$s25ClaudeOrchestratorMonitor0abC3AppV4bodyQrvg7SwiftUI9EmptyViewVyXEfU_', symObjAddr: 0x0, symBinAddr: 0x1000020C4, symSize: 0x4 }
+  - { offset: 0xEC62C, size: 0x8, addend: 0x0, symName: '_$s25ClaudeOrchestratorMonitor0abC3AppV7SwiftUI0D0AadEP4body4BodyQzvgTW', symObjAddr: 0x4, symBinAddr: 0x1000020C8, symSize: 0xD0 }
+  - { offset: 0xEC66B, size: 0x8, addend: 0x0, symName: '_$s25ClaudeOrchestratorMonitor0abC3AppV7SwiftUI0D0AadEPxycfCTW', symObjAddr: 0xD4, symBinAddr: 0x100002198, symSize: 0x28 }
+  - { offset: 0xEC77F, size: 0x8, addend: 0x0, symName: '_$ss14_ArrayProtocolPsE6filterySay7ElementQzGSbAEKXEKFSaySo20NSRunningApplicationCG_Tg5079$s25ClaudeOrchestratorMonitor11AppDelegateC24isAnotherInstanceRunningSbyFSbSo20eF6CXEfU_SSTf1cn_nTf4gg_n', symObjAddr: 0x29FC, symBinAddr: 0x100004AC0, symSize: 0x210 }
+  - { offset: 0xEC9C4, size: 0x8, addend: 0x0, symName: '_$s25ClaudeOrchestratorMonitor11AppDelegateCACycfc', symObjAddr: 0xFC, symBinAddr: 0x1000021C0, symSize: 0xB0 }
+  - { offset: 0xECA12, size: 0x8, addend: 0x0, symName: '_$s25ClaudeOrchestratorMonitor11AppDelegateCACycfcTo', symObjAddr: 0x1AC, symBinAddr: 0x100002270, symSize: 0x20 }
+  - { offset: 0xECCBA, size: 0x8, addend: 0x0, symName: '_$s25ClaudeOrchestratorMonitor11AppDelegateC29applicationDidFinishLaunchingyy10Foundation12NotificationVF', symObjAddr: 0x1CC, symBinAddr: 0x100002290, symSize: 0x418 }
+  - { offset: 0xECE83, size: 0x8, addend: 0x0, symName: '_$s25ClaudeOrchestratorMonitor11AppDelegateC29applicationDidFinishLaunchingyy10Foundation12NotificationVFTo', symObjAddr: 0x5E4, symBinAddr: 0x1000026A8, symSize: 0xA0 }
+  - { offset: 0xECF0F, size: 0x8, addend: 0x0, symName: '_$s25ClaudeOrchestratorMonitor11AppDelegateC05checkB6StatusyyF', symObjAddr: 0x6D0, symBinAddr: 0x100002794, symSize: 0x4EC }
+  - { offset: 0xED101, size: 0x8, addend: 0x0, symName: '_$s25ClaudeOrchestratorMonitor11AppDelegateC8updateUI9isRunningySb_tF', symObjAddr: 0xBE8, symBinAddr: 0x100002CAC, symSize: 0x1DC }
+  - { offset: 0xED23A, size: 0x8, addend: 0x0, symName: '_$s25ClaudeOrchestratorMonitor11AppDelegateC10updateIcon9isRunningySb_tF', symObjAddr: 0xDC4, symBinAddr: 0x100002E88, symSize: 0x14C }
+  - { offset: 0xED362, size: 0x8, addend: 0x0, symName: '_$s25ClaudeOrchestratorMonitor11AppDelegateC06toggleB0yyFTo', symObjAddr: 0xF78, symBinAddr: 0x10000303C, symSize: 0x44 }
+  - { offset: 0xED3AD, size: 0x8, addend: 0x0, symName: '_$s25ClaudeOrchestratorMonitor11AppDelegateC05startB0yyF', symObjAddr: 0xFBC, symBinAddr: 0x100003080, symSize: 0x3AC }
+  - { offset: 0xED468, size: 0x8, addend: 0x0, symName: '_$s25ClaudeOrchestratorMonitor11AppDelegateC04stopB0yyF', symObjAddr: 0x1368, symBinAddr: 0x10000342C, symSize: 0x440 }
+  - { offset: 0xED59B, size: 0x8, addend: 0x0, symName: '_$s25ClaudeOrchestratorMonitor11AppDelegateC04quitD0yyFTo', symObjAddr: 0x17A8, symBinAddr: 0x10000386C, symSize: 0x4 }
+  - { offset: 0xED5B3, size: 0x8, addend: 0x0, symName: '_$s25ClaudeOrchestratorMonitor11AppDelegateC04quitD0yyFTo', symObjAddr: 0x17A8, symBinAddr: 0x10000386C, symSize: 0x4 }
+  - { offset: 0xED5C5, size: 0x8, addend: 0x0, symName: '_$s25ClaudeOrchestratorMonitor11AppDelegateCfD', symObjAddr: 0x17AC, symBinAddr: 0x100003870, symSize: 0x30 }
+  - { offset: 0xED5EF, size: 0x8, addend: 0x0, symName: _ClaudeOrchestratorMonitor_main, symObjAddr: 0x1814, symBinAddr: 0x1000038D8, symSize: 0x50 }
+  - { offset: 0xED6AC, size: 0x8, addend: 0x0, symName: '_$s25ClaudeOrchestratorMonitor11AppDelegateC24isAnotherInstanceRunningSbyFTf4d_n', symObjAddr: 0x2C0C, symBinAddr: 0x100004CD0, symSize: 0x180 }
+  - { offset: 0xED780, size: 0x8, addend: 0x0, symName: '_$s25ClaudeOrchestratorMonitor11AppDelegateC04quitD0yyFTf4d_n', symObjAddr: 0x2D8C, symBinAddr: 0x100004E50, symSize: 0x114 }
+...

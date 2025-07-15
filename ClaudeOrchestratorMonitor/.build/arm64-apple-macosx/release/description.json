@@ -1,0 +1,226 @@
+{
+  "builtTestProducts" : [
+
+  ],
+  "copyCommands" : {
+
+  },
+  "explicitTargetDependencyImportCheckingMode" : {
+    "none" : {
+
+    }
+  },
+  "generatedSourceTargetSet" : [
+
+  ],
+  "pluginDescriptions" : [
+
+  ],
+  "swiftCommands" : {
+    "C.ClaudeOrchestratorMonitor-arm64-apple-macosx15.0-release.module" : {
+      "executable" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "fileList" : "/Users/felixlunzenfichter/Documents/macos-voice-control/ClaudeOrchestratorMonitor/.build/arm64-apple-macosx/release/ClaudeOrchestratorMonitor.build/sources",
+      "importPath" : "/Users/felixlunzenfichter/Documents/macos-voice-control/ClaudeOrchestratorMonitor/.build/arm64-apple-macosx/release/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/felixlunzenfichter/Documents/macos-voice-control/ClaudeOrchestratorMonitor/ClaudeOrchestratorMonitorApp.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/felixlunzenfichter/Documents/macos-voice-control/ClaudeOrchestratorMonitor/.build/arm64-apple-macosx/release/swift-version--58304C5D6DBC2206.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/felixlunzenfichter/Documents/macos-voice-control/ClaudeOrchestratorMonitor/.build/arm64-apple-macosx/release/ClaudeOrchestratorMonitor.build/sources"
+        }
+      ],
+      "isLibrary" : false,
+      "moduleName" : "ClaudeOrchestratorMonitor",
+      "moduleOutputPath" : "/Users/felixlunzenfichter/Documents/macos-voice-control/ClaudeOrchestratorMonitor/.build/arm64-apple-macosx/release/Modules/ClaudeOrchestratorMonitor.swiftmodule",
+      "objects" : [
+        "/Users/felixlunzenfichter/Documents/macos-voice-control/ClaudeOrchestratorMonitor/.build/arm64-apple-macosx/release/ClaudeOrchestratorMonitor.build/ClaudeOrchestratorMonitorApp.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx12.0",
+        "-O",
+        "-j12",
+        "-DSWIFT_PACKAGE",
+        "-module-cache-path",
+        "/Users/felixlunzenfichter/Documents/macos-voice-control/ClaudeOrchestratorMonitor/.build/arm64-apple-macosx/release/ModuleCache",
+        "-parseable-output",
+        "-Xfrontend",
+        "-entry-point-function-name",
+        "-Xfrontend",
+        "ClaudeOrchestratorMonitor_main",
+        "-parse-as-library",
+        "-swift-version",
+        "5",
+        "-sdk",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+        "-I",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-L",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g"
+      ],
+      "outputFileMapPath" : "/Users/felixlunzenfichter/Documents/macos-voice-control/ClaudeOrchestratorMonitor/.build/arm64-apple-macosx/release/ClaudeOrchestratorMonitor.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/felixlunzenfichter/Documents/macos-voice-control/ClaudeOrchestratorMonitor/.build/arm64-apple-macosx/release/ClaudeOrchestratorMonitor.build/ClaudeOrchestratorMonitorApp.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/felixlunzenfichter/Documents/macos-voice-control/ClaudeOrchestratorMonitor/.build/arm64-apple-macosx/release/Modules/ClaudeOrchestratorMonitor.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/felixlunzenfichter/Documents/macos-voice-control/ClaudeOrchestratorMonitor/ClaudeOrchestratorMonitorApp.swift"
+      ],
+      "tempsPath" : "/Users/felixlunzenfichter/Documents/macos-voice-control/ClaudeOrchestratorMonitor/.build/arm64-apple-macosx/release/ClaudeOrchestratorMonitor.build",
+      "wholeModuleOptimization" : true
+    }
+  },
+  "swiftFrontendCommands" : {
+
+  },
+  "swiftTargetScanArgs" : {
+    "ClaudeOrchestratorMonitor" : [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-module-name",
+      "ClaudeOrchestratorMonitor",
+      "-whole-module-optimization",
+      "-num-threads",
+      "12",
+      "-c",
+      "/Users/felixlunzenfichter/Documents/macos-voice-control/ClaudeOrchestratorMonitor/ClaudeOrchestratorMonitorApp.swift",
+      "-I",
+      "/Users/felixlunzenfichter/Documents/macos-voice-control/ClaudeOrchestratorMonitor/.build/arm64-apple-macosx/release/Modules",
+      "-target",
+      "arm64-apple-macosx12.0",
+      "-O",
+      "-j12",
+      "-DSWIFT_PACKAGE",
+      "-module-cache-path",
+      "/Users/felixlunzenfichter/Documents/macos-voice-control/ClaudeOrchestratorMonitor/.build/arm64-apple-macosx/release/ModuleCache",
+      "-parseable-output",
+      "-Xfrontend",
+      "-entry-point-function-name",
+      "-Xfrontend",
+      "ClaudeOrchestratorMonitor_main",
+      "-parse-as-library",
+      "-swift-version",
+      "5",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+      "-I",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-L",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-driver-use-frontend-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+    ]
+  },
+  "targetDependencyMap" : {
+    "ClaudeOrchestratorMonitor" : [
+
+    ]
+  },
+  "testDiscoveryCommands" : {
+
+  },
+  "testEntryPointCommands" : {
+
+  },
+  "traitConfiguration" : {
+    "enableAllTraits" : false
+  },
+  "writeCommands" : {
+    "/Users/felixlunzenfichter/Documents/macos-voice-control/ClaudeOrchestratorMonitor/.build/arm64-apple-macosx/release/ClaudeOrchestratorMonitor.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/felixlunzenfichter/Documents/macos-voice-control/ClaudeOrchestratorMonitor/ClaudeOrchestratorMonitorApp.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/felixlunzenfichter/Documents/macos-voice-control/ClaudeOrchestratorMonitor/.build/arm64-apple-macosx/release/ClaudeOrchestratorMonitor.build/sources"
+    },
+    "/Users/felixlunzenfichter/Documents/macos-voice-control/ClaudeOrchestratorMonitor/.build/arm64-apple-macosx/release/ClaudeOrchestratorMonitor.product/Objects.LinkFileList" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<link-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/felixlunzenfichter/Documents/macos-voice-control/ClaudeOrchestratorMonitor/.build/arm64-apple-macosx/release/ClaudeOrchestratorMonitor.build/ClaudeOrchestratorMonitorApp.swift.o"
+        }
+      ],
+      "outputFilePath" : "/Users/felixlunzenfichter/Documents/macos-voice-control/ClaudeOrchestratorMonitor/.build/arm64-apple-macosx/release/ClaudeOrchestratorMonitor.product/Objects.LinkFileList"
+    },
+    "/Users/felixlunzenfichter/Documents/macos-voice-control/ClaudeOrchestratorMonitor/.build/arm64-apple-macosx/release/swift-version--58304C5D6DBC2206.txt" : {
+      "alwaysOutOfDate" : true,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<swift-get-version>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+        }
+      ],
+      "outputFilePath" : "/Users/felixlunzenfichter/Documents/macos-voice-control/ClaudeOrchestratorMonitor/.build/arm64-apple-macosx/release/swift-version--58304C5D6DBC2206.txt"
+    }
+  }
+}
