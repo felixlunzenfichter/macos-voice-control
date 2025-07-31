@@ -35,7 +35,7 @@ class GoogleBackend: NSObject {
     var onTranscriptionComplete: ((String) -> Void)?  // Callback when transcription is final
     
     // Backend URL from configuration
-    private let backendURL = "ws://192.168.2.223:8080"
+    private let backendURL = "ws://192.168.1.9:8080"
     
     // Status check timer
     private var statusCheckTimer: Timer?

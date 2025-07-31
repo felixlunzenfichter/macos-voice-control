@@ -5,30 +5,28 @@ const fs = require('fs');
 const OpenAI = require('openai');
 const player = require('play-sound')();
 require('dotenv').config();
+const Logger = require('../logs/logger');
 
-// Configuration
+const logger = new Logger('mac-server');
+
 const BACKEND_URL = process.env.BACKEND_URL || 'ws://192.168.2.223:8080';
-const RECONNECT_DELAY = 5000; // 5 seconds
+const RECONNECT_DELAY = 5000;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
-// Voice ranking (Felix's preferences)
 const VOICE_RANKING = {
-  1: 'fable',   // Favorite - main Claude voice (root)
-  2: 'nova',    // Worker 1
-  3: 'shimmer', // Worker 2
-  4: 'alloy',   // Worker 3
-  5: 'onyx',    // Worker 4
-  6: 'echo'     // Worker 5
+  1: 'fable',
+  2: 'nova',
+  3: 'shimmer',
+  4: 'alloy',
+  5: 'onyx',
+  6: 'echo'
 };
 
-// Track voice assignments
 const voiceAssignments = {
   'root': 'fable',
-  // workers will be assigned dynamically
 };
-let nextVoiceIndex = 2; // Start with nova for first worker
+let nextVoiceIndex = 2;
 
-// Initialize OpenAI client if API key exists
 const openai = OPENAI_API_KEY ? new OpenAI({ apiKey: OPENAI_API_KEY }) : null;
 
 class MacServer {
@@ -42,19 +40,18 @@ class MacServer {
     this.transcriptMonitorInterval = null;
     this.audioQueue = [];
     this.isPlayingAudio = false;
-    this.micActive = false;  // Track iPhone mic status
+    this.micActive = false;
   }
 
   connect() {
-    console.log(`Connecting to backend: ${BACKEND_URL}`);
+    logger.log('connect', `Connecting to backend: ${BACKEND_URL}`);
     
     this.ws = new WebSocket(BACKEND_URL);
 
     this.ws.on('open', () => {
-      console.log('Connected to transcription backend');
+      logger.log('connect', 'Connected to transcription backend');
       this.isConnected = true;
       
-      // Send identification as Mac Server
       this.ws.send(JSON.stringify({
         type: 'identify',
         clientType: 'receiver',
@@ -67,26 +64,25 @@ class MacServer {
         const message = JSON.parse(data.toString());
         this.handleMessage(message);
       } catch (error) {
-        console.error('Error parsing message:', error);
+        logger.error('onMessage', 'Error parsing message', { error: error.message });
       }
     });
 
     this.ws.on('close', () => {
-      console.log('Disconnected from backend');
+      logger.log('onClose', 'Disconnected from backend');
       this.isConnected = false;
       this.scheduleReconnect();
     });
 
     this.ws.on('error', (error) => {
-      console.error('WebSocket error:', error.message);
+      logger.error('onError', 'WebSocket error', { error: error.message });
     });
   }
 
   handleMessage(message) {
     switch (message.type) {
       case 'connection':
-        console.log('Backend says:', message.message);
-        // Start monitoring Claude transcripts if TTS is available
+        logger.log('handleMessage', 'Backend says:', { message: message.message });
         if (openai && !this.transcriptMonitorInterval) {
           this.startTranscriptMonitoring();
         }
@@ -94,19 +90,18 @@ class MacServer {
         
       case 'transcript':
         if (message.isFinal) {
-          console.log(`Final transcript: "${message.transcript}"`);
+          logger.log('handleMessage', `Final transcript: "${message.transcript}"`, { transcript: message.transcript });
           this.typeTranscription(message.transcript);
         } else {
-          console.log(`Interim: "${message.transcript}"`);
+          logger.log('handleMessage', `Interim transcript`, { transcript: message.transcript });
         }
         break;
         
       case 'error':
-        console.error('Backend error:', message.error);
+        logger.error('handleMessage', 'Backend error', { error: message.error });
         break;
         
       case 'ping':
-        // Respond to health check
         this.ws.send(JSON.stringify({
           type: 'pong',
           pingId: message.pingId
@@ -114,39 +109,33 @@ class MacServer {
         break;
         
       case 'keyPress':
-        // Handle key press events
-        console.log(`Received key press: ${message.key}`);
+        logger.log('handleMessage', `Received key press: ${message.key}`, { key: message.key });
         this.simulateKeyPress(message.key);
         break;
         
       case 'ttsToggle':
-        // Handle TTS toggle from iPhone app
         this.handleTTSToggle(message.enabled);
         break;
         
       case 'micStatus':
-        // Handle mic status change from iPhone app
         this.handleMicStatus(message.active);
         break;
         
       case 'ping':
-        // Already handled above, just for clarity
         break;
         
       default:
-        console.log('Unknown message type:', message.type);
+        logger.error('handleMessage', 'Unknown message type', { messageType: message.type });
     }
   }
 
   typeTranscription(text) {
     if (!text || text.trim() === '') return;
     
-    // First check if claude_orchestrator session exists
     exec('tmux has-session -t claude_orchestrator 2>/dev/null', (error) => {
       if (!error) {
         // Orchestrator exists, send to coordination pane
-        console.log('Orchestrator found, sending to coordination pane');
-        // Send text first, then Enter separately
+        logger.log('typeTranscription', 'Orchestrator found, sending to coordination pane');
         const escapedText = text.replace(/"/g, '\\"').replace(/'/g, "'\\''");
         const textCommand = `tmux send-keys -t claude_orchestrator:0.0 '${escapedText}'`;
         const enterCommand = `tmux send-keys -t claude_orchestrator:0.0 C-m`;
@@ -154,47 +143,39 @@ class MacServer {
         // Send text first
         exec(textCommand, (err) => {
           if (err) {
-            console.error('Error sending text to orchestrator:', err);
-            // Fallback to normal typing
+            logger.error('typeTranscription', 'Error sending text to orchestrator', { error: err.message });
             this.typeToActiveTerminal(text);
           } else {
-            // Then send Enter
             exec(enterCommand, (err2) => {
               if (err2) {
-                console.error('Error sending Enter:', err2);
+                logger.error('typeTranscription', 'Error sending Enter', { error: err2.message });
               } else {
-                console.log('Successfully sent to orchestrator');
+                logger.log('typeTranscription', 'Successfully sent to orchestrator');
               }
             });
           }
         });
       } else {
-        // No orchestrator, type normally
-        console.log('No orchestrator found, typing to active terminal');
+        logger.log('typeTranscription', 'No orchestrator found, typing to active terminal');
         this.typeToActiveTerminal(text);
       }
     });
   }
   
   typeToActiveTerminal(text) {
-    // Write text to temporary file to avoid escaping issues
     const fs = require('fs');
     const tempFile = `/tmp/transcription_${Date.now()}.txt`;
     fs.writeFileSync(tempFile, text);
     
-    // AppleScript to read from file and type
     const script = `
       set textContent to read POSIX file "${tempFile}" as string
       
-      -- Bring Terminal to the foreground
       tell application "Terminal"
         activate
       end tell
       
-      -- Small delay to ensure Terminal is active
       delay 0.1
       
-      -- Type the text into Terminal
       tell application "System Events"
         keystroke textContent
         delay 1
@@ -206,33 +187,30 @@ class MacServer {
     
     exec(`osascript -e '${script}'`, (error, stdout, stderr) => {
       if (error) {
-        console.error('Error typing text:', error);
-        // Clean up temp file on error
+        logger.error('typeToActiveTerminal', 'Error typing text', { error: error.message });
         try { fs.unlinkSync(tempFile); } catch (e) {}
       } else {
-        console.log('Typed successfully');
+        logger.log('typeToActiveTerminal', 'Typed successfully');
       }
     });
   }
 
   simulateKeyPress(key) {
-    // Map key names to AppleScript key codes
     const keyMap = {
-      'escape': '53',  // Escape key
-      'return': '36',  // Return/Enter key
-      'tab': '48',     // Tab key
-      'space': '49',   // Space key
-      'delete': '51',  // Delete key
-      'up': '126',     // Up arrow
-      'down': '125',   // Down arrow
-      'left': '123',   // Left arrow
-      'right': '124'   // Right arrow
+      'escape': '53',
+      'return': '36',
+      'tab': '48',
+      'space': '49',
+      'delete': '51',
+      'up': '126',
+      'down': '125',
+      'left': '123',
+      'right': '124'
     };
     
     const keyCode = keyMap[key.toLowerCase()];
     
     if (keyCode) {
-      // Use key code for special keys
       const script = `
         tell application "Terminal"
           activate
@@ -247,13 +225,12 @@ class MacServer {
       
       exec(`osascript -e '${script}'`, (error, stdout, stderr) => {
         if (error) {
-          console.error(`Error simulating ${key} key:`, error);
+          logger.error('simulateKeyPress', `Error simulating ${key} key`, { key, error: error.message });
         } else {
-          console.log(`Simulated ${key} key press`);
+          logger.log('simulateKeyPress', `Simulated ${key} key press`, { key });
         }
       });
     } else {
-      // For regular characters, use keystroke
       const script = `
         tell application "Terminal"
           activate
@@ -268,9 +245,9 @@ class MacServer {
       
       exec(`osascript -e '${script}'`, (error, stdout, stderr) => {
         if (error) {
-          console.error(`Error typing ${key}:`, error);
+          logger.error('simulateKeyPress', `Error typing ${key}`, { key, error: error.message });
         } else {
-          console.log(`Typed ${key}`);
+          logger.log('simulateKeyPress', `Typed ${key}`, { key });
         }
       });
     }
@@ -278,73 +255,63 @@ class MacServer {
 
   async handleTTSToggle(enabled) {
     this.ttsEnabled = enabled;
-    console.log(`🔊 TTS ${enabled ? 'enabled' : 'disabled'} via toggle command`);
+    logger.log('handleTTSToggle', `🔊 TTS ${enabled ? 'enabled' : 'disabled'} via toggle command`, { ttsEnabled: enabled });
     
-    // Always kill any playing audio and clear queue on toggle (both enable and disable)
     if (this.currentAudioProcess) {
-      console.log(`🔇 Killing audio process PID: ${this.currentAudioProcess.pid}`);
+      logger.log('handleTTSToggle', `🔇 Killing audio process PID: ${this.currentAudioProcess.pid}`);
       this.currentAudioProcess.kill();
       this.currentAudioProcess = null;
     }
     
-    // Clear the audio queue on any toggle
     const queueLength = this.audioQueue.length;
     this.audioQueue = [];
     this.isPlayingAudio = false;
-    console.log(`🗑️  Cleared audio queue (${queueLength} items removed) on TTS toggle`);
+    logger.log('handleTTSToggle', `🗑️  Cleared audio queue (${queueLength} items removed) on TTS toggle`, { queueLength });
     
-    // Clean up any paused audio file
     if (this.pausedAudioFile && fs.existsSync(this.pausedAudioFile)) {
       fs.unlinkSync(this.pausedAudioFile);
       this.pausedAudioFile = null;
     }
     
-    // Send confirmation back to backend
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify({
         type: 'ttsStateConfirm',
         enabled: this.ttsEnabled
       }));
-      console.log(`✅ Sent TTS state confirmation: ${this.ttsEnabled}`);
+      logger.log('handleTTSToggle', `✅ Sent TTS state confirmation: ${this.ttsEnabled}`, { ttsEnabled: this.ttsEnabled });
     }
   }
 
   async handleMicStatus(active) {
     const previousStatus = this.micActive;
     this.micActive = active;
-    console.log(`🎤 Mic status changed: ${active ? 'ACTIVE' : 'INACTIVE'}`);
+    logger.log('handleMicStatus', `🎤 Mic status changed: ${active ? 'ACTIVE' : 'INACTIVE'}`, { micActive: active, previousStatus });
     
     if (active) {
-      // Mic is now active - stop any playing audio and clear queue
       if (this.currentAudioProcess) {
-        console.log(`🛑 Stopping audio - mic is active`);
+        logger.log('handleMicStatus', `🛑 Stopping audio - mic is active`);
         this.currentAudioProcess.kill();
         this.currentAudioProcess = null;
       }
       
-      // Clear the entire audio queue
       const queueLength = this.audioQueue.length;
       this.audioQueue = [];
       this.isPlayingAudio = false;
-      console.log(`🗑️  Cleared audio queue (${queueLength} items removed) - mic is active`);
+      logger.log('handleMicStatus', `🗑️  Cleared audio queue (${queueLength} items removed) - mic is active`, { queueLength });
       
-      // Clean up any paused audio file
-      if (this.pausedAudioFile && fs.existsSync(this.pausedAudioFile)) {
+        if (this.pausedAudioFile && fs.existsSync(this.pausedAudioFile)) {
         fs.unlinkSync(this.pausedAudioFile);
         this.pausedAudioFile = null;
       }
     } else if (!active && previousStatus) {
-      // Mic just became inactive - ready to process new audio
-      console.log(`▶️  Mic inactive - ready for new audio`);
+      logger.log('handleMicStatus', `▶️  Mic inactive - ready for new audio`);
       
-      // Don't play old audio - queue is already cleared
-      // New audio will be processed as it comes in
     }
   }
 
   async textToSpeech(text, voice = 'fable') {
     if (!openai) {
-      console.error('OpenAI client not initialized');
+      logger.error('textToSpeech', 'OpenAI client not initialized');
       return null;
     }
 
@@ -361,38 +328,34 @@ class MacServer {
       
       return tempFile;
     } catch (error) {
-      console.error('Error generating speech:', error);
+      logger.error('textToSpeech', 'Error generating speech', { error: error.message, voice, textLength: text.length });
       return null;
     }
   }
 
   async playAudio(audioFile) {
     if (!this.ttsEnabled) {
-      console.log('🔇 TTS disabled - not playing audio');
+      logger.log('playAudio', '🔇 TTS disabled - not playing audio');
       if (fs.existsSync(audioFile)) fs.unlinkSync(audioFile);
       return;
     }
 
-    // Check if mic is active - if so, discard the audio
     if (this.micActive) {
-      console.log('🎤 Mic is active - discarding audio');
+      logger.log('playAudio', '🎤 Mic is active - discarding audio');
       if (fs.existsSync(audioFile)) fs.unlinkSync(audioFile);
       return;
     }
 
     return new Promise((resolve) => {
-      // Kill any existing audio process
       if (this.currentAudioProcess) {
         this.currentAudioProcess.kill();
       }
 
-      // Start new audio playback
       this.currentAudioProcess = player.play(audioFile, (err) => {
         if (err && !err.killed) {
-          console.error('Audio playback error:', err);
+          logger.error('playAudio', 'Audio playback error', { error: err.message });
         }
         
-        // Clean up temp file
         if (fs.existsSync(audioFile)) {
           fs.unlinkSync(audioFile);
         }
@@ -401,27 +364,25 @@ class MacServer {
         resolve();
       });
 
-      console.log(`▶️  Playing audio (PID: ${this.currentAudioProcess.pid})`);
+      logger.log('playAudio', `▶️  Playing audio (PID: ${this.currentAudioProcess.pid})`);
     });
   }
 
   async narrate(text, voice = 'fable') {
     if (!this.ttsEnabled) {
-      console.log('🔇 TTS is disabled - skipping narration');
+      logger.log('narrate', '🔇 TTS is disabled - skipping narration');
       return;
     }
 
-    console.log(`🗣️ Adding to queue (${voice}): ${text.length > 100 ? text.substring(0, 100) + '...' : text}`);
+    logger.log('narrate', `🗣️ Adding to queue`, { voice, textLength: text.length, preview: text.substring(0, 50) });
     
-    // Add to queue with voice
     this.audioQueue.push({ text, voice });
-    console.log(`📋 Queue length: ${this.audioQueue.length}, Playing: ${this.isPlayingAudio}, Mic Active: ${this.micActive}`);
+    logger.log('narrate', `📋 Queue status`, { queueLength: this.audioQueue.length, isPlaying: this.isPlayingAudio, micActive: this.micActive });
     
-    // Process queue if not already playing and mic is not active
     if (!this.isPlayingAudio && !this.micActive) {
       this.processAudioQueue();
     } else if (this.micActive) {
-      console.log('🎤 Mic is active - queuing audio for later');
+      logger.log('narrate', '🎤 Mic is active - queuing audio for later');
     }
   }
 
@@ -438,7 +399,7 @@ class MacServer {
       const text = typeof item === 'string' ? item : item.text;
       const voice = typeof item === 'string' ? 'fable' : item.voice;
       
-      console.log(`▶️  Processing from queue (${voice}): ${text.length > 50 ? text.substring(0, 50) + '...' : text}`);
+      logger.log('processAudioQueue', `▶️  Processing from queue`, { voice, textLength: text.length, preview: text.substring(0, 50) });
       
       const audioFile = await this.textToSpeech(text, voice);
       if (audioFile) {
@@ -453,7 +414,6 @@ class MacServer {
     const newMessages = [];
     const filePathStr = jsonlPath.toString();
     
-    // Get last read position
     const lastPosition = this.filePositions[filePathStr] || 0;
     
     try {
@@ -479,22 +439,19 @@ class MacServer {
             }
           }
         } catch (e) {
-          // Skip invalid JSON lines
         }
       }
       
-      // Update file position
       this.filePositions[filePathStr] = currentPosition;
       
     } catch (error) {
-      console.error('Error reading transcript:', error);
+      logger.error('extractNewMessages', 'Error reading transcript', { error: error.message, file: jsonlPath });
     }
     
     return newMessages;
   }
 
   getActiveInstance() {
-    // Returns the most recently modified Claude instance
     const projectsDir = path.join(process.env.HOME, '.claude', 'projects');
     let mostRecent = null;
     let latestTime = 0;
@@ -520,11 +477,10 @@ class MacServer {
             }
           }
         } catch (error) {
-          // Skip directories we can't read
         }
       }
     } catch (error) {
-      console.error('Error finding active instance:', error);
+      logger.error('getActiveInstance', 'Error finding active instance', { error: error.message });
     }
     
     return mostRecent;
@@ -533,19 +489,16 @@ class MacServer {
   startTranscriptMonitoring() {
     const projectsDir = path.join(process.env.HOME, '.claude', 'projects');
     
-    console.log('Starting dynamic Claude instance monitoring...');
+    logger.log('startTranscriptMonitoring', 'Starting dynamic Claude instance monitoring');
     
-    // Monitor for new messages from all Claude instances
     this.transcriptMonitorInterval = setInterval(async () => {
       try {
-        // Find all project directories
         const projectDirs = fs.readdirSync(projectsDir)
           .map(dir => path.join(projectsDir, dir))
           .filter(dir => fs.statSync(dir).isDirectory());
         
         let allTranscriptFiles = [];
         
-        // Collect transcript files from all project directories
         for (const projectDir of projectDirs) {
           try {
             const files = fs.readdirSync(projectDir)
@@ -557,51 +510,44 @@ class MacServer {
               }));
             allTranscriptFiles = allTranscriptFiles.concat(files);
           } catch (error) {
-            // Skip directories we can't read
-          }
+            }
         }
         
-        // Sort by modification time to find most recently active
         allTranscriptFiles.sort((a, b) => b.mtime - a.mtime);
         
-        // Process files from most recently modified
         for (const fileInfo of allTranscriptFiles) {
-          // Initialize position if not tracked
           if (!this.filePositions[fileInfo.path]) {
             const stats = fs.statSync(fileInfo.path);
             this.filePositions[fileInfo.path] = stats.size;
-            console.log(`Now tracking: ${fileInfo.project}`);
+            logger.log('startTranscriptMonitoring', `Now tracking: ${fileInfo.project}`, { project: fileInfo.project });
           }
           
-          // Check for new messages
           const newMessages = this.extractNewMessages(fileInfo.path);
           
-          // Narrate each new message
           for (const message of newMessages) {
-            console.log(`[${fileInfo.project}] New message detected`);
+            logger.log('startTranscriptMonitoring', 'New message detected', { project: fileInfo.project });
             await this.narrate(message);
           }
         }
         
-        // Clean up tracking for deleted files
         const existingFiles = new Set(allTranscriptFiles.map(f => f.path));
         for (const trackedFile of Object.keys(this.filePositions)) {
           if (!existingFiles.has(trackedFile)) {
             delete this.filePositions[trackedFile];
-            console.log(`Stopped tracking deleted file: ${path.basename(trackedFile)}`);
+            logger.log('startTranscriptMonitoring', 'Stopped tracking deleted file', { file: path.basename(trackedFile) });
           }
         }
         
       } catch (error) {
-        console.error('Error monitoring transcripts:', error);
+        logger.error('startTranscriptMonitoring', 'Error monitoring transcripts', { error: error.message });
       }
-    }, 500); // Check every 500ms
+    }, 500);
   }
 
   scheduleReconnect() {
     if (this.reconnectTimer) return;
     
-    console.log(`Reconnecting in ${RECONNECT_DELAY / 1000} seconds...`);
+    logger.log('scheduleReconnect', `Reconnecting in ${RECONNECT_DELAY / 1000} seconds...`);
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
       this.connect();
@@ -631,31 +577,26 @@ class MacServer {
   }
 }
 
-// Start the Mac server
 const server = new MacServer();
 server.connect();
 
-// Handle graceful shutdown
 process.on('SIGINT', () => {
-  console.log('\nShutting down...');
+  logger.log('shutdown', 'Shutting down...');
   server.stop();
   process.exit(0);
 });
 
 process.on('SIGTERM', () => {
-  console.log('\nShutting down...');
+  logger.log('shutdown', 'Shutting down...');
   server.stop();
   process.exit(0);
 });
 
-console.log('Mac Server started');
-console.log('Features: Voice transcription typing, TTS narration');
+logger.log('startup', 'Mac Server started');
+logger.log('startup', 'Features: Voice transcription typing, TTS narration');
 if (openai) {
-  console.log('✅ TTS enabled with OpenAI');
+  logger.log('startup', '✅ TTS enabled with OpenAI');
 } else {
-  console.log('⚠️  TTS disabled - OPENAI_API_KEY not found');
+  logger.log('startup', '⚠️  TTS disabled - OPENAI_API_KEY not found');
 }
-console.log('Press Ctrl+C to stop');
-console.log('');
-console.log('Make sure to grant Terminal accessibility permissions in:');
-console.log('System Settings > Privacy & Security > Accessibility');
+logger.log('startup', 'Terminal accessibility permissions required in System Settings > Privacy & Security > Accessibility');

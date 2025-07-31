@@ -1,17 +1,19 @@
+# Environment & Secrets
 node_modules/
 .env
-.DS_Store
-*.log
-dist/
-build/
 
-# iOS build artifacts
-ios-app/build/
-ios-app/DerivedData/
-*.xcuserstate
-ios-app/ClaudeCodeMicrophone.xcodeproj/xcuserdata/
-ios-app/ClaudeCodeMicrophone.xcodeproj/project.xcworkspace/xcuserdata/
-# iOS app build artifacts
+# Logging
+logs/
+
+# Build Files
+build/
+dist/
+
+# macOS System Files
+.DS_Store
+
+# iOS Build Artifacts
 iOS\ app/build/
 iOS\ app/ClaudeCodeMicrophone.xcodeproj/xcuserdata/
 iOS\ app/ClaudeCodeMicrophone.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcuserstate
