@@ -35,7 +35,16 @@ class GoogleBackend: NSObject {
     var onTranscriptionComplete: ((String) -> Void)?  // Callback when transcription is final
     
     // Backend URL from configuration
-    private let backendURL = "ws://192.168.1.9:8080"
+    private var backendURL: String {
+        // Try to load from Config.plist
+        if let path = Bundle.main.path(forResource: "Config", ofType: "plist"),
+           let config = NSDictionary(contentsOfFile: path),
+           let url = config["backendURL"] as? String {
+            return url
+        }
+        // Fallback to localhost if config not found
+        return "ws://localhost:8080"
+    }
     
     // Status check timer
     private var statusCheckTimer: Timer?

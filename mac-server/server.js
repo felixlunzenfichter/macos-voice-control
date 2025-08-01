@@ -9,7 +9,16 @@ const Logger = require('../logs/logger');
 
 const logger = new Logger('mac-server');
 
-const BACKEND_URL = process.env.BACKEND_URL || 'ws://192.168.2.223:8080';
+// Load backend URL from config file
+let BACKEND_URL;
+try {
+  const config = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8'));
+  BACKEND_URL = process.env.BACKEND_URL || config.backendUrl;
+} catch (error) {
+  // Fallback if config file doesn't exist
+  BACKEND_URL = process.env.BACKEND_URL || 'ws://localhost:8080';
+  logger.error('config', 'Failed to load config.json, using fallback URL', { error: error.message });
+}
 const RECONNECT_DELAY = 5000;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 

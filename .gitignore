@@ -1,6 +1,8 @@
 # Environment & Secrets
 node_modules/
 .env
+mac-server/config.json
+iOS\ app/ClaudeCodeMicrophone/Config.plist
 
 # Logging
 logs/
