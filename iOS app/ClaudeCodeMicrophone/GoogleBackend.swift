@@ -34,16 +34,18 @@ class GoogleBackend: NSObject {
     var latestFinalTranscript = ""  // Most recent final transcript
     var onTranscriptionComplete: ((String) -> Void)?  // Callback when transcription is final
     
-    // Backend URL from configuration
+    // Backend URL from configuration - REQUIRED
     private var backendURL: String {
         // Try to load from Config.plist
         if let path = Bundle.main.path(forResource: "Config", ofType: "plist"),
            let config = NSDictionary(contentsOfFile: path),
            let url = config["backendURL"] as? String {
+            Logger.shared.log("Loaded backend URL from Config.plist: \(url)")
             return url
         }
-        // Fallback to localhost if config not found
-        return "ws://localhost:8080"
+        // FATAL: Config.plist is required
+        let errorMessage = "FATAL ERROR: Config.plist not found in app bundle! The app cannot function without Config.plist containing backendURL."
+        fatalError(errorMessage)
     }
     
     // Status check timer
@@ -53,8 +55,10 @@ class GoogleBackend: NSObject {
     private var firstPacketSent = false
     
     func connect() {
-        Logger.shared.log("Connecting to: \(backendURL)")
-        guard let url = URL(string: backendURL) else {
+        // This will crash if Config.plist is missing
+        let urlString = backendURL
+        Logger.shared.log("Connecting to: \(urlString)")
+        guard let url = URL(string: urlString) else {
             connectionStatus = "Invalid URL"
             return
         }

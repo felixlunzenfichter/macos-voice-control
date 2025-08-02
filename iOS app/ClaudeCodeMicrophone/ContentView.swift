@@ -24,31 +24,46 @@ struct ContentView: View {
                     VStack(spacing: 0) {
                         
                         // Scrollable transcription area with newest on top
-                        ScrollView {
-                            VStack(alignment: .leading, spacing: 10) {
-                                // Show interim text at the top (newest) only when transcribing
-                                if motionManager.isTranscribing && !googleBackend.interimText.isEmpty {
-                                    Text(googleBackend.interimText)
-                                        .font(.title3)
-                                        .foregroundColor(.white.opacity(0.8))
-                                        .multilineTextAlignment(.leading)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                }
-                                
-                                // Show all transcriptions below interim text
-                                if !googleBackend.transcriptionText.isEmpty {
-                                    // Split transcriptions by newlines and reverse to show newest first
-                                    let lines = googleBackend.transcriptionText.split(separator: "\n").reversed()
-                                    ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
-                                        Text(String(line))
+                        ScrollViewReader { scrollProxy in
+                            ScrollView {
+                                VStack(alignment: .leading, spacing: 10) {
+                                    // Invisible anchor at the top for scrolling
+                                    Color.clear
+                                        .frame(height: 1)
+                                        .id("top")
+                                    
+                                    // Show interim text at the top (newest) only when transcribing
+                                    if motionManager.isTranscribing && !googleBackend.interimText.isEmpty {
+                                        Text(googleBackend.interimText)
                                             .font(.title3)
-                                            .foregroundColor(.white)
+                                            .foregroundColor(.white.opacity(0.8))
                                             .multilineTextAlignment(.leading)
                                             .frame(maxWidth: .infinity, alignment: .leading)
                                     }
+                                    
+                                    // Show all transcriptions below interim text
+                                    if !googleBackend.transcriptionText.isEmpty {
+                                        // Split transcriptions by newlines and reverse to show newest first
+                                        let lines = googleBackend.transcriptionText.split(separator: "\n").reversed()
+                                        ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
+                                            Text(String(line))
+                                                .font(.title3)
+                                                .foregroundColor(.white)
+                                                .multilineTextAlignment(.leading)
+                                                .frame(maxWidth: .infinity, alignment: .leading)
+                                        }
+                                    }
+                                }
+                                .padding(20)
+                            }
+                            .onChange(of: motionManager.isTranscribing) { isTranscribing in
+                                if isTranscribing {
+                                    // Scroll to top when transcribing starts (yellow screen)
+                                    withAnimation {
+                                        scrollProxy.scrollTo("top", anchor: .top)
+                                    }
                                 }
                             }
-                            .padding(20)
                         }
                         .frame(maxHeight: .infinity)
                         .scrollContentBackground(.hidden)
