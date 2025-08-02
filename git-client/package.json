@@ -1,0 +1,29 @@
+{
+  "name": "git-client",
+  "version": "2.0.0",
+  "description": "Universal Git repository monitor with real-time status, diff, and content viewing",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "server": "node git-server.js",
+    "dev": "npm run server & npm start",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "git",
+    "monitor",
+    "electron",
+    "real-time"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^37.2.4"
+  },
+  "dependencies": {
+    "chokidar": "^4.0.3",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "ws": "^8.18.3"
+  }
+}
