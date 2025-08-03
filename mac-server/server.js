@@ -498,7 +498,7 @@ class MacServer {
   startTranscriptMonitoring() {
     const projectsDir = path.join(process.env.HOME, '.claude', 'projects');
     
-    logger.log('startTranscriptMonitoring', 'Starting dynamic Claude instance monitoring');
+    // Silently start monitoring - no need to log this
     
     this.transcriptMonitorInterval = setInterval(async () => {
       try {
@@ -528,13 +528,13 @@ class MacServer {
           if (!this.filePositions[fileInfo.path]) {
             const stats = fs.statSync(fileInfo.path);
             this.filePositions[fileInfo.path] = stats.size;
-            logger.log('startTranscriptMonitoring', `Now tracking: ${fileInfo.project}`, { project: fileInfo.project });
+            // Silently start tracking - reduces log spam
           }
           
           const newMessages = this.extractNewMessages(fileInfo.path);
           
           for (const message of newMessages) {
-            logger.log('startTranscriptMonitoring', 'New message detected', { project: fileInfo.project });
+            // New message detected - narration will handle notification
             await this.narrate(message);
           }
         }

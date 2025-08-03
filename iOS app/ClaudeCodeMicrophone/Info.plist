@@ -37,5 +37,9 @@
     </array>
     <key>NSMicrophoneUsageDescription</key>
     <string>This app needs microphone access to transcribe your voice</string>
+    <key>BackendHost</key>
+    <string>$(BACKEND_HOST)</string>
+    <key>BackendPort</key>
+    <string>$(BACKEND_PORT)</string>
 </dict>
 </plist>
