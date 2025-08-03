@@ -35,6 +35,8 @@
 		BBBB88888888888888888888 /* GoogleBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleBackend.swift; sourceTree = "<group>"; };
 		4444DDDD4444DDDD4444DDDD /* ClaudeCodeMicrophoneUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ClaudeCodeMicrophoneUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2222BBBB2222BBBB2222BBBB /* HelpButtonUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpButtonUITests.swift; sourceTree = "<group>"; };
+		AA11BB22CC33DD44EE55FF66 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
+		BB22CC33DD44EE55FF66AA77 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -58,6 +60,8 @@
 		81A3B4C581A3B4C581A3B4C5 = {
 			isa = PBXGroup;
 			children = (
+				AA11BB22CC33DD44EE55FF66 /* Debug.xcconfig */,
+				BB22CC33DD44EE55FF66AA77 /* Release.xcconfig */,
 				92B4C5D692B4C5D692B4C5D6 /* ClaudeCodeMicrophone */,
 				6666FFFF6666FFFF6666FFFF /* ClaudeCodeMicrophoneUITests */,
 				A3C5D6E7A3C5D6E7A3C5D6E7 /* Products */,
@@ -221,6 +225,7 @@
 /* Begin XCBuildConfiguration section */
 		1C2D3E4F1C2D3E4F1C2D3E4F /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = AA11BB22CC33DD44EE55FF66 /* Debug.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -284,6 +289,7 @@
 		};
 		2D3E4F502D3E4F502D3E4F50 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = BB22CC33DD44EE55FF66AA77 /* Release.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;

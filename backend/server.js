@@ -80,6 +80,7 @@ wss.on('connection', (ws) => {
   let recognizeStream = null;
   let previousTranscript = '';
   let forwardingEnabled = true;
+  let audioSessionStarted = false;
   
   getServerStatuses().then(statuses => {
     ws.send(JSON.stringify({ 
@@ -93,14 +94,18 @@ wss.on('connection', (ws) => {
   ws.on('message', async (data) => {
     try {
       if (Buffer.isBuffer(data) && data.length > 100) {
-        logger.log('onMessage', `Received audio data: ${data.length} bytes`);
+        // Only log once when audio session starts
+        if (!audioSessionStarted) {
+          logger.log('onMessage', `Audio session started - receiving data`);
+          audioSessionStarted = true;
+        }
         if (recognizeStream && !recognizeStream.destroyed) {
           const samples = new Int16Array(data.buffer, data.byteOffset, data.length / 2);
           let maxAmplitude = 0;
           for (let i = 0; i < Math.min(100, samples.length); i++) {
             maxAmplitude = Math.max(maxAmplitude, Math.abs(samples[i]));
           }
-          logger.log('onMessage', `Max amplitude in audio: ${maxAmplitude}`, { maxAmplitude, audioLength: data.length });
+          // Remove per-packet amplitude logging to reduce noise
           
           recognizeStream.write(data);
         } else {
@@ -222,6 +227,7 @@ wss.on('connection', (ws) => {
           if (recognizeStream) {
             recognizeStream.end();
             recognizeStream = null;
+            audioSessionStarted = false;  // Reset for next session
             logger.log('onMessage', 'Stopped recognition stream');
           }
           

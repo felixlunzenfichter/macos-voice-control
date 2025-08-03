@@ -36,16 +36,15 @@ class GoogleBackend: NSObject {
     
     // Backend URL from configuration - REQUIRED
     private var backendURL: String {
-        // Try to load from Config.plist
-        if let path = Bundle.main.path(forResource: "Config", ofType: "plist"),
-           let config = NSDictionary(contentsOfFile: path),
-           let url = config["backendURL"] as? String {
-            Logger.shared.log("Loaded backend URL from Config.plist: \(url)")
-            return url
+        // Load host and port from Info.plist
+        guard let host = Bundle.main.object(forInfoDictionaryKey: "BackendHost") as? String,
+              let port = Bundle.main.object(forInfoDictionaryKey: "BackendPort") as? String else {
+            let errorMessage = "FATAL ERROR: BackendHost and BackendPort not found in Info.plist! The app cannot function without backend configuration."
+            fatalError(errorMessage)
         }
-        // FATAL: Config.plist is required
-        let errorMessage = "FATAL ERROR: Config.plist not found in app bundle! The app cannot function without Config.plist containing backendURL."
-        fatalError(errorMessage)
+        let url = "ws://\(host):\(port)"
+        Logger.shared.log("Constructed backend URL from Info.plist: \(url)")
+        return url
     }
     
     // Status check timer
@@ -55,7 +54,7 @@ class GoogleBackend: NSObject {
     private var firstPacketSent = false
     
     func connect() {
-        // This will crash if Config.plist is missing
+        // This will crash if BackendURL is missing from Info.plist
         let urlString = backendURL
         Logger.shared.log("Connecting to: \(urlString)")
         guard let url = URL(string: urlString) else {

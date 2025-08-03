@@ -144,14 +144,26 @@ The script will:
 The backend is using the wrong Google credentials path. Kill and restart with the correct path above.
 
 ### iPhone not connecting / No transcriber logs
-1. **Check backend URL in iPhone app:**
+1. **Check backend URL configuration:**
    ```bash
-   # Check Config.plist in iPhone app
-   cat "/Users/felixlunzenfichter/Documents/macos-voice-control/iOS app/ClaudeCodeMicrophone/Config.plist"
+   # Check xcconfig files for backend configuration
+   cat "/Users/felixlunzenfichter/Documents/macos-voice-control/iOS app/Debug.xcconfig"
+   cat "/Users/felixlunzenfichter/Documents/macos-voice-control/iOS app/Release.xcconfig"
    ```
-   Backend URL should match your Mac's IP address (usually starts with 192.168.x.x:8080)
+   BACKEND_HOST should match your Mac's IP address (usually 192.168.x.x)
+   BACKEND_PORT should be 8080
 
-2. **Check device ID:**
+2. **Update backend URL if IP address changed:**
+   ```bash
+   # Get current Mac IP address
+   ifconfig | grep "inet " | grep -v 127.0.0.1 | awk '{print $2}'
+   
+   # Update xcconfig files with new IP
+   cd "/Users/felixlunzenfichter/Documents/macos-voice-control/iOS app"
+   # Edit Debug.xcconfig and Release.xcconfig to update BACKEND_HOST
+   ```
+
+3. **Check device ID:**
    ```bash
    # List connected devices
    xcrun devicectl list devices
@@ -159,7 +171,7 @@ The backend is using the wrong Google credentials path. Kill and restart with th
    # Update device ID in run-on-iphone.sh if needed (lines 10 and 24)
    ```
 
-3. **Redeploy iPhone app:**
+4. **Redeploy iPhone app:**
    ```bash
    cd "/Users/felixlunzenfichter/Documents/macos-voice-control/iOS app"
    ./run-on-iphone.sh
