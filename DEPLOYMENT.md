@@ -15,27 +15,12 @@ Should show:
 
 ### View Central Logging System
 
-**Important: Save timestamp before checking logs to filter only new activity**
-
-1. Save current timestamp to file:
-```bash
-date '+%Y-%m-%d %H:%M:%S' > /Users/felixlunzenfichter/Documents/macos-voice-control/logs/deploy_start.txt
-echo "Saved timestamp: $(cat /Users/felixlunzenfichter/Documents/macos-voice-control/logs/deploy_start.txt)"
-```
-
-2. Convert logs and check recent activity:
 ```bash
 # Convert JSON logs to readable text format (sorted by time)
 node /Users/felixlunzenfichter/Documents/macos-voice-control/logs/json-to-text.js
 
 # Check most recent logs
 tail -50 /Users/felixlunzenfichter/Documents/macos-voice-control/logs/logs.txt
-```
-
-3. Filter logs after saved timestamp to see only new activity:
-```bash
-# Show only logs after the saved timestamp from file
-awk -v ts="$(cat /Users/felixlunzenfichter/Documents/macos-voice-control/logs/deploy_start.txt)" '$0 ~ /^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}/ && $0 >= ts' /Users/felixlunzenfichter/Documents/macos-voice-control/logs/logs.txt
 ```
 
 ### Verify System Startup
