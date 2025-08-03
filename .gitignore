@@ -16,6 +16,10 @@ dist/
 # macOS System Files
 .DS_Store
 
+# Local Development Files
+TODO.md
+CURRENT_COMMIT.md
+
 # iOS Build Artifacts
 iOS\ app/build/
 iOS\ app/ClaudeCodeMicrophone.xcodeproj/xcuserdata/
