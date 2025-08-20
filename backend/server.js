@@ -1,15 +1,40 @@
 const express = require('express');
 const { WebSocketServer } = require('ws');
 const speech = require('@google-cloud/speech');
-const Logger = require('../logs/logger');
-
-const logger = new Logger('backend');
+const Logger = require('./logs/logger');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
 
+const clients = {
+  transcribers: new Set(),
+  receivers: new Map()
+};
+
+// Backend logger with forwarding callback to mac-server
+const logger = new Logger('backend', (logEntry) => {
+  try {
+    // Forward to mac-server via WebSocket if available
+    if (clients && clients.receivers && clients.receivers.size > 0) {
+      const logMessage = {
+        type: 'log',
+        ...logEntry
+      };
+      const messageStr = JSON.stringify(logMessage);
+      for (const [name, receiver] of clients.receivers.entries()) {
+        if (receiver && receiver.readyState === 1) { // WebSocket.OPEN = 1
+          receiver.send(messageStr);
+        }
+      }
+    }
+  } catch (error) {
+    // Ignore errors in log forwarding to prevent crashes
+    console.error('Log forwarding error:', error.message);
+  }
+});
+
 app.get('/', (req, res) => {
-  logger.log('healthCheck', 'Health check endpoint accessed', { ip: req.ip });
+  logger.log(`Health check endpoint accessed from ${req.ip}`);
   res.json({ 
     status: 'ok', 
     service: 'Speech Transcription Backend',
@@ -18,22 +43,17 @@ app.get('/', (req, res) => {
 });
 
 const server = app.listen(PORT, () => {
-  logger.log('startup', `Server running on port ${PORT}`);
+  logger.log(`Server running on port ${PORT}`);
 });
 
 const wss = new WebSocketServer({ server });
-logger.log('startup', 'WebSocket server created');
+logger.log('WebSocket server created');
 
 const speechClient = new speech.SpeechClient();
-logger.log('startup', 'Google Speech client initialized');
-
-const clients = {
-  transcribers: new Set(),
-  receivers: new Map()
-};
+logger.log('Google Speech client initialized');
 
 async function getServerStatuses() {
-  logger.log('getServerStatuses', 'Checking server statuses');
+  logger.log('Checking server statuses');
   const statuses = {
     "Backend": true,
     "Mac Server": false
@@ -57,13 +77,13 @@ async function getServerStatuses() {
         });
       });
       
-      logger.log('getServerStatuses', `Sending ping to Mac Server with ID: ${pingId}`);
+      logger.log(`Sending ping to Mac Server with ID: ${pingId}`);
       macServer.send(JSON.stringify({ type: 'ping', pingId }));
       const isResponsive = await pongPromise;
-      logger.log('getServerStatuses', `Mac Server ping response: ${isResponsive}`, { pingId, isResponsive });
+      logger.log(`Mac Server ping response: ${isResponsive}`);
       statuses["Mac Server"] = isResponsive;
     } catch (error) {
-      logger.error('getServerStatuses', 'Error pinging Mac Server', { error: error.message });
+      logger.error(`Error pinging Mac Server: ${error.message}`);
       statuses["Mac Server"] = false;
     }
   }
@@ -74,7 +94,7 @@ async function getServerStatuses() {
 
 
 wss.on('connection', (ws) => {
-  logger.log('connection', 'Client connected');
+  logger.log(`Client connected from ${ws._socket.remoteAddress}:${ws._socket.remotePort}`);
   
   let clientType = 'transcriber';
   let recognizeStream = null;
@@ -96,7 +116,7 @@ wss.on('connection', (ws) => {
       if (Buffer.isBuffer(data) && data.length > 100) {
         // Only log once when audio session starts
         if (!audioSessionStarted) {
-          logger.log('onMessage', `Audio session started - receiving data`);
+          logger.log(`Audio session started - receiving data`);
           audioSessionStarted = true;
         }
         if (recognizeStream && !recognizeStream.destroyed) {
@@ -109,7 +129,7 @@ wss.on('connection', (ws) => {
           
           recognizeStream.write(data);
         } else {
-          logger.error('onMessage', 'No active recognition stream');
+          logger.error('No active recognition stream for incoming audio data');
         }
       } else if (data.toString().startsWith('{')) {
         const message = JSON.parse(data.toString());
@@ -117,14 +137,14 @@ wss.on('connection', (ws) => {
         if (message.type === 'identify') {
           clientType = message.clientType || 'transcriber';
           const clientName = message.clientName || clientType;
-          logger.log('onMessage', `Client identified as: ${clientType} (${clientName})`, { clientType, clientName });
+          logger.log(`Client identified as: ${clientType} (${clientName})`);
           
           if (clientType === 'receiver') {
             clients.receivers.set(clientName, ws);
-            logger.log('onMessage', `Receiver '${clientName}' connected. Total receivers: ${clients.receivers.size}`, { clientName, totalReceivers: clients.receivers.size });
+            logger.log(`Receiver '${clientName}' connected. Total receivers: ${clients.receivers.size}`);
           } else {
             clients.transcribers.add(ws);
-            logger.log('onMessage', `Transcriber connected. Total transcribers: ${clients.transcribers.size}`, { totalTranscribers: clients.transcribers.size });
+            logger.log(`Transcriber connected. Total transcribers: ${clients.transcribers.size}`);
           }
           
           getServerStatuses().then(statuses => {
@@ -138,7 +158,7 @@ wss.on('connection', (ws) => {
           
         } else if (message.type === 'start') {
           if (clients.receivers.size === 0) {
-            logger.log('onMessage', 'No receivers connected - skipping speech recognition to save costs');
+            logger.log('No receivers connected - skipping speech recognition to save costs');
             ws.send(JSON.stringify({ 
               type: 'info', 
               message: 'No receivers connected - speech recognition disabled to save costs' 
@@ -147,7 +167,7 @@ wss.on('connection', (ws) => {
           }
           
           const sampleRate = message.sampleRate || 44100;
-          logger.log('onMessage', `Starting recognition stream at ${sampleRate}Hz`, { sampleRate, languageCode: message.languageCode || 'en-US' });
+          logger.log(`Starting recognition stream at ${sampleRate}Hz`);
           
           const request = {
             config: {
@@ -163,7 +183,7 @@ wss.on('connection', (ws) => {
           recognizeStream = speechClient
             .streamingRecognize(request)
             .on('error', (error) => {
-              logger.error('recognizeStream', 'Recognition error', { error: error.message, code: error.code });
+              logger.error(`Recognition stream error: ${error.message}`);
               ws.send(JSON.stringify({ 
                 type: 'error', 
                 error: error.message 
@@ -200,12 +220,12 @@ wss.on('connection', (ws) => {
                     }
                   }
                   
-                  logger.log('recognizeStream', `${isFinal ? 'Final' : 'Interim'} transcript`, { transcript, delta, isFinal });
+                  logger.log(`${isFinal ? 'Final' : 'Interim'} transcript: "${transcript}"`);
                   if (clients.receivers.size > 0) {
-                    logger.log('recognizeStream', `Broadcast to ${clients.receivers.size} receiver(s)`, { receiversCount: clients.receivers.size });
+                    logger.log(`Broadcast to ${clients.receivers.size} receiver(s)`);
                   }
                 } else {
-                  logger.log('recognizeStream', `${isFinal ? 'Final' : 'Interim'} transcript (forwarding disabled)`, { transcript, delta, isFinal, forwardingEnabled: false });
+                  logger.log(`${isFinal ? 'Final' : 'Interim'} transcript (forwarding disabled): "${transcript}"`);
                 }
                 
                 if (isFinal) {
@@ -228,12 +248,12 @@ wss.on('connection', (ws) => {
             recognizeStream.end();
             recognizeStream = null;
             audioSessionStarted = false;  // Reset for next session
-            logger.log('onMessage', 'Stopped recognition stream');
+            logger.log('Stopped recognition stream');
           }
           
         } else if (message.type === 'stopForwarding') {
           forwardingEnabled = false;
-          logger.log('onMessage', 'Stopped forwarding transcriptions to Mac');
+          logger.log('Stopped forwarding transcriptions to Mac');
           ws.send(JSON.stringify({ 
             type: 'forwardingStatus', 
             forwarding: false 
@@ -241,7 +261,7 @@ wss.on('connection', (ws) => {
           
         } else if (message.type === 'startForwarding') {
           forwardingEnabled = true;
-          logger.log('onMessage', 'Resumed forwarding transcriptions to Mac');
+          logger.log('Resumed forwarding transcriptions to Mac');
           ws.send(JSON.stringify({ 
             type: 'forwardingStatus', 
             forwarding: true 
@@ -254,38 +274,38 @@ wss.on('connection', (ws) => {
             timestamp: new Date().toISOString()
           };
           
-          logger.log('onMessage', `Forwarding key press: ${message.key}`, { key: message.key });
+          logger.log(`Forwarding key press "${message.key}" to ${clients.receivers.size} receivers`);
           
           const messageStr = JSON.stringify(keyPressMessage);
           for (const [name, receiver] of clients.receivers.entries()) {
             if (receiver.readyState === receiver.OPEN) {
               receiver.send(messageStr);
-              logger.log('onMessage', `Sent key press to receiver: ${name}`, { receiverName: name, key: message.key });
+              logger.log(`Sent key press "${message.key}" to receiver: ${name}`);
             }
           }
         } else if (message.type === 'ttsToggle') {
-          logger.log('onMessage', `Received TTS toggle request: ${message.enabled}`, { ttsEnabled: message.enabled });
+          logger.log(`Received TTS toggle request: ${message.enabled}`);
           const ttsToggleMessage = {
             type: 'ttsToggle',
             enabled: message.enabled,
             timestamp: new Date().toISOString()
           };
           
-          logger.log('onMessage', `Forwarding TTS toggle: ${message.enabled}`, { ttsEnabled: message.enabled });
+          logger.log(`Forwarding TTS toggle: ${message.enabled}`);
           
           const macServer = clients.receivers.get("Mac Server");
           if (macServer && macServer.readyState === macServer.OPEN) {
             macServer.send(JSON.stringify(ttsToggleMessage));
-            logger.log('onMessage', `Sent TTS toggle to Mac Server: ${message.enabled}`, { ttsEnabled: message.enabled });
+            logger.log(`Sent TTS toggle to Mac Server: ${message.enabled}`);
           } else {
-            logger.error('onMessage', 'Mac Server not connected for TTS toggle');
+            logger.error('Mac Server not connected - cannot toggle TTS');
             ws.send(JSON.stringify({
               type: 'error',
               error: 'Mac Server not connected'
             }));
           }
         } else if (message.type === 'ttsStateConfirm') {
-          logger.log('onMessage', `Received TTS state confirmation from Mac Server: ${message.enabled}`, { ttsEnabled: message.enabled });
+          logger.log(`Received TTS state confirmation from Mac Server: ${message.enabled}`);
           const confirmMessage = {
             type: 'ttsState',
             enabled: message.enabled
@@ -297,16 +317,16 @@ wss.on('connection', (ws) => {
             if (transcriber.readyState === transcriber.OPEN) {
               transcriber.send(messageStr);
               sentCount++;
-              logger.log('onMessage', `Sent TTS state confirmation to transcriber #${sentCount}: ${message.enabled}`, { transcriberNum: sentCount, ttsEnabled: message.enabled });
+              logger.log(`Sent TTS state confirmation to transcriber #${sentCount}: ${message.enabled}`);
             }
           }
-          logger.log('onMessage', `Total transcribers notified: ${sentCount}`, { notifiedCount: sentCount });
+          logger.log(`Total transcribers notified: ${sentCount}`);
           
           if (sentCount === 0) {
-            logger.error('onMessage', 'WARNING: No transcribers connected to receive TTS state confirmation');
+            logger.error('WARNING: No transcribers connected to receive TTS state confirmation');
           }
         } else if (message.type === 'helpMessage') {
-          logger.error('onMessage', '🆘 EMERGENCY HELP MESSAGE RECEIVED');
+          logger.error('🆘 EMERGENCY HELP MESSAGE RECEIVED');
           
           const emergencyMessage = {
             type: 'transcript',
@@ -320,7 +340,7 @@ wss.on('connection', (ws) => {
           for (const [name, receiver] of clients.receivers.entries()) {
             if (receiver.readyState === receiver.OPEN) {
               receiver.send(messageStr);
-              logger.error('onMessage', `🆘 Sent emergency transcript to receiver: ${name}`, { receiverName: name });
+              logger.error(`🆘 Sent emergency transcript to receiver: ${name}`);
             }
           }
           
@@ -330,51 +350,52 @@ wss.on('connection', (ws) => {
           }));
           
         } else if (message.type === 'micStatus') {
-          logger.log('onMessage', `Received mic status: ${message.active ? 'ACTIVE' : 'INACTIVE'}`, { micActive: message.active });
+          logger.log(`Received mic status: ${message.active ? 'ACTIVE' : 'INACTIVE'}`);
           const micStatusMessage = {
             type: 'micStatus',
             active: message.active,
             timestamp: new Date().toISOString()
           };
           
-          logger.log('onMessage', `Forwarding mic status to Mac Server: ${message.active ? 'active' : 'inactive'}`, { micActive: message.active });
+          logger.log(`Forwarding mic status to Mac Server: ${message.active ? 'active' : 'inactive'}`);
           
           const macServer = clients.receivers.get("Mac Server");
           if (macServer && macServer.readyState === macServer.OPEN) {
             macServer.send(JSON.stringify(micStatusMessage));
-            logger.log('onMessage', 'Sent mic status to Mac Server', { micActive: message.active });
+            logger.log(`Sent mic status (${message.active ? 'active' : 'inactive'}) to Mac Server`);
           } else {
-            logger.error('onMessage', 'Mac Server not connected to receive mic status');
+            logger.error('Mac Server not connected - cannot send mic status');
           }
           
         } else if (message.type === 'pong') {
           
         } else if (message.type === 'log') {
-          const logEntry = {
-            timestamp: new Date().toISOString(),
+          // Forward iOS logs to mac-server only
+          const logMessage = {
+            type: 'log',
             level: message.level || 'LOG',
             service: 'iOS',
             class: message.class || '',
             function: message.function || '',
             message: message.message,
+            timestamp: new Date().toISOString(),
             ...message.metadata
           };
           
-          const logLine = JSON.stringify(logEntry) + '\n';
-          require('fs').appendFile(require('path').join(__dirname, '../logs/logs.json'), logLine, (err) => {
-            if (err) {
-              logger.error('onMessage', 'Failed to write iOS log', { error: err.message });
+          // Forward to mac-server
+          const messageStr = JSON.stringify(logMessage);
+          for (const [name, receiver] of clients.receivers.entries()) {
+            if (receiver.readyState === receiver.OPEN) {
+              receiver.send(messageStr);
             }
-          });
-          
-          logger.log('onMessage', 'Received iOS log', { level: message.level, message: message.message });
+          }
           
         } else {
-          logger.error('onMessage', `Unknown message type: ${message.type}`, { messageType: message.type });
+          logger.error(`Unknown WebSocket message type received: ${message.type}`);
         }
       }
     } catch (error) {
-      logger.error('onMessage', 'Error processing message', { error: error.message, stack: error.stack });
+      logger.error(`Error processing WebSocket message: ${error.message}`);
       ws.send(JSON.stringify({ 
         type: 'error', 
         error: error.message 
@@ -383,7 +404,7 @@ wss.on('connection', (ws) => {
   });
   
   ws.on('close', () => {
-    logger.log('onClose', `${clientType} disconnected`, { clientType });
+    logger.log(`${clientType} disconnected`);
     
     let wasReceiver = false;
     
@@ -391,14 +412,14 @@ wss.on('connection', (ws) => {
       if (socket === ws) {
         clients.receivers.delete(name);
         wasReceiver = true;
-        logger.log('onClose', `Receiver '${name}' disconnected`, { receiverName: name });
+        logger.log(`Receiver '${name}' disconnected`);
         break;
       }
     }
     
     clients.transcribers.delete(ws);
     
-    logger.log('onClose', `Active clients - Transcribers: ${clients.transcribers.size}, Receivers: ${clients.receivers.size}`, { transcribers: clients.transcribers.size, receivers: clients.receivers.size });
+    logger.log(`Active clients - Transcribers: ${clients.transcribers.size}, Receivers: ${clients.receivers.size}`);
     
     
     if (recognizeStream) {
@@ -407,13 +428,13 @@ wss.on('connection', (ws) => {
   });
   
   ws.on('error', (error) => {
-    logger.error('onError', 'WebSocket error', { error: error.message, stack: error.stack });
+    logger.error(`WebSocket connection error: ${error.message}`, { stack: error.stack });
   });
 });
 
 process.on('SIGTERM', () => {
-  logger.log('shutdown', 'SIGTERM received, shutting down gracefully');
+  logger.log('SIGTERM received, shutting down gracefully');
   server.close(() => {
-    logger.log('shutdown', 'Server closed');
+    logger.log('Server closed');
   });
 });

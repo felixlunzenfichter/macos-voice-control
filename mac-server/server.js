@@ -7,18 +7,20 @@ const player = require('play-sound')();
 require('dotenv').config();
 const Logger = require('../logs/logger');
 
+// Mac-server logger with default file logging
 const logger = new Logger('mac-server');
 
-// Load backend URL from config file
-let BACKEND_URL;
-try {
-  const config = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8'));
-  BACKEND_URL = process.env.BACKEND_URL || config.backendUrl;
-} catch (error) {
-  // Fallback if config file doesn't exist
-  BACKEND_URL = process.env.BACKEND_URL || 'ws://localhost:8080';
-  logger.error('config', 'Failed to load config.json, using fallback URL', { error: error.message });
+// Load backend URL from process.env only - crash if not found
+const BACKEND_URL = process.env.BACKEND_URL;
+
+if (!BACKEND_URL) {
+  logger.error('FATAL: BACKEND_URL environment variable not set');
+  console.error('FATAL ERROR: BACKEND_URL environment variable not set');
+  console.error('Set BACKEND_URL environment variable (e.g., wss://your-backend-url)');
+  process.exit(1);
 }
+
+logger.log(`Backend URL: ${BACKEND_URL}`);
 const RECONNECT_DELAY = 5000;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
@@ -53,12 +55,12 @@ class MacServer {
   }
 
   connect() {
-    logger.log('connect', `Connecting to backend: ${BACKEND_URL}`);
+    logger.log(`Connecting to backend: ${BACKEND_URL}`);
     
     this.ws = new WebSocket(BACKEND_URL);
 
     this.ws.on('open', () => {
-      logger.log('connect', 'Connected to transcription backend');
+      logger.log('Connected to transcription backend');
       this.isConnected = true;
       
       this.ws.send(JSON.stringify({
@@ -73,25 +75,25 @@ class MacServer {
         const message = JSON.parse(data.toString());
         this.handleMessage(message);
       } catch (error) {
-        logger.error('onMessage', 'Error parsing message', { error: error.message });
+        logger.error(`Error parsing WebSocket message: ${error.message}`);
       }
     });
 
     this.ws.on('close', () => {
-      logger.log('onClose', 'Disconnected from backend');
+      logger.log('Disconnected from backend');
       this.isConnected = false;
       this.scheduleReconnect();
     });
 
     this.ws.on('error', (error) => {
-      logger.error('onError', 'WebSocket error', { error: error.message });
+      logger.error(`WebSocket connection error: ${error.message}`);
     });
   }
 
   handleMessage(message) {
     switch (message.type) {
       case 'connection':
-        logger.log('handleMessage', 'Backend says:', { message: message.message });
+        logger.log('Connected to transcription backend');
         if (openai && !this.transcriptMonitorInterval) {
           this.startTranscriptMonitoring();
         }
@@ -99,15 +101,15 @@ class MacServer {
         
       case 'transcript':
         if (message.isFinal) {
-          logger.log('handleMessage', `Final transcript: "${message.transcript}"`, { transcript: message.transcript });
+          logger.log(`Final transcript: "${message.transcript}"`);
           this.typeTranscription(message.transcript);
         } else {
-          logger.log('handleMessage', `Interim transcript`, { transcript: message.transcript });
+          logger.log(`Interim transcript`);
         }
         break;
         
       case 'error':
-        logger.error('handleMessage', 'Backend error', { error: message.error });
+        logger.error(`Backend error received: ${message.error}`);
         break;
         
       case 'ping':
@@ -118,7 +120,7 @@ class MacServer {
         break;
         
       case 'keyPress':
-        logger.log('handleMessage', `Received key press: ${message.key}`, { key: message.key });
+        logger.log(`Received key press: ${message.key}`);
         this.simulateKeyPress(message.key);
         break;
         
@@ -133,9 +135,19 @@ class MacServer {
       case 'ping':
         break;
         
+      case 'log':
+        // Handle forwarded logs from backend/iOS and write to local file
+        this.receiveLog(message);
+        break;
+        
       default:
-        logger.error('handleMessage', 'Unknown message type', { messageType: message.type });
+        logger.error(`Unknown WebSocket message type received: ${message.type}`);
     }
+  }
+
+  receiveLog(logEntry) {
+    // Use the default file logging to write forwarded logs to local file
+    logger.defaultFileLogging(logEntry);
   }
 
   typeTranscription(text) {
@@ -144,7 +156,7 @@ class MacServer {
     exec('tmux has-session -t claude_orchestrator 2>/dev/null', (error) => {
       if (!error) {
         // Orchestrator exists, send to coordination pane
-        logger.log('typeTranscription', 'Orchestrator found, sending to coordination pane');
+        logger.log('Orchestrator found, sending to coordination pane');
         const escapedText = text.replace(/"/g, '\\"').replace(/'/g, "'\\''");
         const textCommand = `tmux send-keys -t claude_orchestrator:0.0 '${escapedText}'`;
         const enterCommand = `tmux send-keys -t claude_orchestrator:0.0 C-m`;
@@ -152,20 +164,20 @@ class MacServer {
         // Send text first
         exec(textCommand, (err) => {
           if (err) {
-            logger.error('typeTranscription', 'Error sending text to orchestrator', { error: err.message });
+            logger.error(`Error sending text to orchestrator: ${err.message}`);
             this.typeToActiveTerminal(text);
           } else {
             exec(enterCommand, (err2) => {
               if (err2) {
-                logger.error('typeTranscription', 'Error sending Enter', { error: err2.message });
+                logger.error(`Error sending enter key to orchestrator: ${err2.message}`);
               } else {
-                logger.log('typeTranscription', 'Successfully sent to orchestrator');
+                logger.log('Successfully sent to orchestrator');
               }
             });
           }
         });
       } else {
-        logger.log('typeTranscription', 'No orchestrator found, typing to active terminal');
+        logger.log('No orchestrator found, typing to active terminal');
         this.typeToActiveTerminal(text);
       }
     });
@@ -196,10 +208,10 @@ class MacServer {
     
     exec(`osascript -e '${script}'`, (error, stdout, stderr) => {
       if (error) {
-        logger.error('typeToActiveTerminal', 'Error typing text', { error: error.message });
+        logger.error(`Error typing text via AppleScript: ${error.message}`);
         try { fs.unlinkSync(tempFile); } catch (e) {}
       } else {
-        logger.log('typeToActiveTerminal', 'Typed successfully');
+        logger.log('Typed successfully');
       }
     });
   }
@@ -234,9 +246,9 @@ class MacServer {
       
       exec(`osascript -e '${script}'`, (error, stdout, stderr) => {
         if (error) {
-          logger.error('simulateKeyPress', `Error simulating ${key} key`, { key, error: error.message });
+          logger.error(`Error simulating ${key} key: ${error.message}`);
         } else {
-          logger.log('simulateKeyPress', `Simulated ${key} key press`, { key });
+          logger.log(`Simulated ${key} key press`);
         }
       });
     } else {
@@ -254,9 +266,9 @@ class MacServer {
       
       exec(`osascript -e '${script}'`, (error, stdout, stderr) => {
         if (error) {
-          logger.error('simulateKeyPress', `Error typing ${key}`, { key, error: error.message });
+          logger.error(`Error typing ${key}: ${error.message}`);
         } else {
-          logger.log('simulateKeyPress', `Typed ${key}`, { key });
+          logger.log(`Typed ${key}`);
         }
       });
     }
@@ -264,10 +276,10 @@ class MacServer {
 
   async handleTTSToggle(enabled) {
     this.ttsEnabled = enabled;
-    logger.log('handleTTSToggle', `🔊 TTS ${enabled ? 'enabled' : 'disabled'} via toggle command`, { ttsEnabled: enabled });
+    logger.log(`🔊 TTS ${enabled ? 'enabled' : 'disabled'} via toggle command`);
     
     if (this.currentAudioProcess) {
-      logger.log('handleTTSToggle', `🔇 Killing audio process PID: ${this.currentAudioProcess.pid}`);
+      logger.log(`🔇 Killing audio process PID: ${this.currentAudioProcess.pid}`);
       this.currentAudioProcess.kill();
       this.currentAudioProcess = null;
     }
@@ -275,7 +287,7 @@ class MacServer {
     const queueLength = this.audioQueue.length;
     this.audioQueue = [];
     this.isPlayingAudio = false;
-    logger.log('handleTTSToggle', `🗑️  Cleared audio queue (${queueLength} items removed) on TTS toggle`, { queueLength });
+    logger.log(`🗑️  Cleared audio queue (${queueLength} items removed) on TTS toggle`);
     
     if (this.pausedAudioFile && fs.existsSync(this.pausedAudioFile)) {
       fs.unlinkSync(this.pausedAudioFile);
@@ -287,18 +299,18 @@ class MacServer {
         type: 'ttsStateConfirm',
         enabled: this.ttsEnabled
       }));
-      logger.log('handleTTSToggle', `✅ Sent TTS state confirmation: ${this.ttsEnabled}`, { ttsEnabled: this.ttsEnabled });
+      logger.log(`✅ Sent TTS state confirmation: ${this.ttsEnabled}`);
     }
   }
 
   async handleMicStatus(active) {
     const previousStatus = this.micActive;
     this.micActive = active;
-    logger.log('handleMicStatus', `🎤 Mic status changed: ${active ? 'ACTIVE' : 'INACTIVE'}`, { micActive: active, previousStatus });
+    logger.log(`🎤 Mic status changed: ${active ? 'ACTIVE' : 'INACTIVE'}`);
     
     if (active) {
       if (this.currentAudioProcess) {
-        logger.log('handleMicStatus', `🛑 Stopping audio - mic is active`);
+        logger.log(`🛑 Stopping audio - mic is active`);
         this.currentAudioProcess.kill();
         this.currentAudioProcess = null;
       }
@@ -306,21 +318,21 @@ class MacServer {
       const queueLength = this.audioQueue.length;
       this.audioQueue = [];
       this.isPlayingAudio = false;
-      logger.log('handleMicStatus', `🗑️  Cleared audio queue (${queueLength} items removed) - mic is active`, { queueLength });
+      logger.log(`🗑️  Cleared audio queue (${queueLength} items removed) - mic is active`);
       
         if (this.pausedAudioFile && fs.existsSync(this.pausedAudioFile)) {
         fs.unlinkSync(this.pausedAudioFile);
         this.pausedAudioFile = null;
       }
     } else if (!active && previousStatus) {
-      logger.log('handleMicStatus', `▶️  Mic inactive - ready for new audio`);
+      logger.log(`▶️  Mic inactive - ready for new audio`);
       
     }
   }
 
   async textToSpeech(text, voice = 'fable') {
     if (!openai) {
-      logger.error('textToSpeech', 'OpenAI client not initialized');
+      logger.error('OpenAI client not initialized');
       return null;
     }
 
@@ -337,20 +349,20 @@ class MacServer {
       
       return tempFile;
     } catch (error) {
-      logger.error('textToSpeech', 'Error generating speech', { error: error.message, voice, textLength: text.length });
+      logger.error(`Error generating speech: ${error.message}`);
       return null;
     }
   }
 
   async playAudio(audioFile) {
     if (!this.ttsEnabled) {
-      logger.log('playAudio', '🔇 TTS disabled - not playing audio');
+      logger.log('🔇 TTS disabled - not playing audio');
       if (fs.existsSync(audioFile)) fs.unlinkSync(audioFile);
       return;
     }
 
     if (this.micActive) {
-      logger.log('playAudio', '🎤 Mic is active - discarding audio');
+      logger.log('🎤 Mic is active - discarding audio');
       if (fs.existsSync(audioFile)) fs.unlinkSync(audioFile);
       return;
     }
@@ -362,7 +374,7 @@ class MacServer {
 
       this.currentAudioProcess = player.play(audioFile, (err) => {
         if (err && !err.killed) {
-          logger.error('playAudio', 'Audio playback error', { error: err.message });
+          logger.error(`Audio playback error: ${err.message}`);
         }
         
         if (fs.existsSync(audioFile)) {
@@ -373,25 +385,25 @@ class MacServer {
         resolve();
       });
 
-      logger.log('playAudio', `▶️  Playing audio (PID: ${this.currentAudioProcess.pid})`);
+      logger.log(`▶️  Playing audio (PID: ${this.currentAudioProcess.pid})`);
     });
   }
 
   async narrate(text, voice = 'fable') {
     if (!this.ttsEnabled) {
-      logger.log('narrate', '🔇 TTS is disabled - skipping narration');
+      logger.log('🔇 TTS is disabled - skipping narration');
       return;
     }
 
-    logger.log('narrate', `🗣️ Adding to queue`, { voice, textLength: text.length, preview: text.substring(0, 50) });
+    logger.log(`🗣️ Adding to queue`);
     
     this.audioQueue.push({ text, voice });
-    logger.log('narrate', `📋 Queue status`, { queueLength: this.audioQueue.length, isPlaying: this.isPlayingAudio, micActive: this.micActive });
+    logger.log(`📋 Queue status`);
     
     if (!this.isPlayingAudio && !this.micActive) {
       this.processAudioQueue();
     } else if (this.micActive) {
-      logger.log('narrate', '🎤 Mic is active - queuing audio for later');
+      logger.log('🎤 Mic is active - queuing audio for later');
     }
   }
 
@@ -408,7 +420,7 @@ class MacServer {
       const text = typeof item === 'string' ? item : item.text;
       const voice = typeof item === 'string' ? 'fable' : item.voice;
       
-      logger.log('processAudioQueue', `▶️  Processing from queue`, { voice, textLength: text.length, preview: text.substring(0, 50) });
+      logger.log(`▶️  Processing from queue`);
       
       const audioFile = await this.textToSpeech(text, voice);
       if (audioFile) {
@@ -454,7 +466,7 @@ class MacServer {
       this.filePositions[filePathStr] = currentPosition;
       
     } catch (error) {
-      logger.error('extractNewMessages', 'Error reading transcript', { error: error.message, file: jsonlPath });
+      logger.error(`Error reading transcript file: ${error.message}`);
     }
     
     return newMessages;
@@ -489,7 +501,7 @@ class MacServer {
         }
       }
     } catch (error) {
-      logger.error('getActiveInstance', 'Error finding active instance', { error: error.message });
+      logger.error(`Error finding active Claude instance: ${error.message}`);
     }
     
     return mostRecent;
@@ -543,12 +555,12 @@ class MacServer {
         for (const trackedFile of Object.keys(this.filePositions)) {
           if (!existingFiles.has(trackedFile)) {
             delete this.filePositions[trackedFile];
-            logger.log('startTranscriptMonitoring', 'Stopped tracking deleted file', { file: path.basename(trackedFile) });
+            logger.log('Stopped tracking deleted file');
           }
         }
         
       } catch (error) {
-        logger.error('startTranscriptMonitoring', 'Error monitoring transcripts', { error: error.message });
+        logger.error(`Error monitoring transcript files: ${error.message}`);
       }
     }, 500);
   }
@@ -556,7 +568,7 @@ class MacServer {
   scheduleReconnect() {
     if (this.reconnectTimer) return;
     
-    logger.log('scheduleReconnect', `Reconnecting in ${RECONNECT_DELAY / 1000} seconds...`);
+    logger.log(`Reconnecting in ${RECONNECT_DELAY / 1000} seconds...`);
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
       this.connect();
@@ -590,22 +602,22 @@ const server = new MacServer();
 server.connect();
 
 process.on('SIGINT', () => {
-  logger.log('shutdown', 'Shutting down...');
+  logger.log('Shutting down...');
   server.stop();
   process.exit(0);
 });
 
 process.on('SIGTERM', () => {
-  logger.log('shutdown', 'Shutting down...');
+  logger.log('Shutting down...');
   server.stop();
   process.exit(0);
 });
 
-logger.log('startup', 'Mac Server started');
-logger.log('startup', 'Features: Voice transcription typing, TTS narration');
+logger.log('Mac Server started');
+logger.log('Features: Voice transcription typing, TTS narration');
 if (openai) {
-  logger.log('startup', '✅ TTS enabled with OpenAI');
+  logger.log('✅ TTS enabled with OpenAI');
 } else {
-  logger.log('startup', '⚠️  TTS disabled - OPENAI_API_KEY not found');
+  logger.log('⚠️  TTS disabled - OPENAI_API_KEY not found');
 }
-logger.log('startup', 'Terminal accessibility permissions required in System Settings > Privacy & Security > Accessibility');
+logger.log('Terminal accessibility permissions required in System Settings > Privacy & Security > Accessibility');
