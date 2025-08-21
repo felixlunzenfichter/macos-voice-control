@@ -195,6 +195,32 @@ function startGitWatching() {
 }
 
 // ====================================================================================
+// SINGLE INSTANCE LOCK - Prevents multiple instances from running
+// ====================================================================================
+const additionalData = { repositoryPath: REPO_PATH };
+const gotTheLock = app.requestSingleInstanceLock(additionalData);
+
+if (!gotTheLock) {
+    // Another instance is already running - exit immediately
+    fs.appendFileSync(LOG_PATH, `${new Date().toISOString()} - ❌ Another Git Client instance is already running. Exiting.\n`);
+    console.error('❌ Git Client is already running. Only one instance is allowed.');
+    app.quit();
+} else {
+    // This is the primary instance - handle second instance attempts
+    app.on('second-instance', (event, commandLine, workingDirectory, additionalData) => {
+        fs.appendFileSync(LOG_PATH, `${new Date().toISOString()} - ⚠️ Second instance attempted to start. Focusing main window.\n`);
+        console.log('⚠️ Second instance blocked. Repository:', additionalData);
+        
+        // Focus the main window instead of creating a new instance
+        if (mainWindow) {
+            if (mainWindow.isMinimized()) mainWindow.restore();
+            mainWindow.focus();
+            mainWindow.show();
+        }
+    });
+}
+
+// ====================================================================================
 // ELECTRON APP LIFECYCLE MANAGEMENT
 // ====================================================================================
 
@@ -203,10 +229,12 @@ ipcMain.handle('log-message', async (event, message) => {
     fs.appendFileSync(LOG_PATH, `${new Date().toISOString()} - [RENDERER] ${message}\n`);
 });
 
-// Start the application when Electron is ready
+// Start the application when Electron is ready (only if we got the lock)
 app.whenReady().then(() => {
-    mainWindow = createWindow();
-    startGitWatching(); // Start efficient Git watching
+    if (gotTheLock) {
+        mainWindow = createWindow();
+        startGitWatching(); // Start efficient Git watching
+    }
 });
 
 // Handle all windows being closed
@@ -222,7 +250,7 @@ app.on('window-all-closed', () => {
 app.on('activate', () => {
     // On macOS, re-create window when dock icon is clicked
     // and no other windows are open
-    if (BrowserWindow.getAllWindows().length === 0) {
+    if (BrowserWindow.getAllWindows().length === 0 && gotTheLock) {
         createWindow();
     }
 });
