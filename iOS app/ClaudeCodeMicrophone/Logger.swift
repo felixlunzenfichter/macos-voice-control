@@ -1,49 +1,60 @@
 import Foundation
+import Observation
 
+/**
+ * iOS Logger with automatic function and class name detection and backend forwarding
+ * 
+ * Features:
+ * - Automatic function name detection via Swift's #function
+ * - Automatic class name detection via type inference
+ * - Single message parameter - no manual function/class names needed
+ * - Pluggable logging callback for backend forwarding
+ * - Default file logging plus console output
+ * 
+ * Usage:
+ *   Logger.shared.log("Something happened")        // LOG | iOS | ClassName | functionName | Something happened
+ *   Logger.shared.error("Error occurred")          // ERROR | iOS | ClassName | functionName | Error occurred
+ */
+@Observable
 class Logger {
     static let shared = Logger()
-    private let logFile: URL
-    private let dateFormatter: DateFormatter
     
-    private init() {
-        // Create log file in Documents directory
-        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-        logFile = documentsPath.appendingPathComponent("ClaudeCodeMicrophone.log")
+    // Callback for forwarding logs to backend
+    var loggingCallback: ((String, String, String, String, String) -> Void)?
+    
+    
+    private func writeLog(_ level: String, _ message: String, file: String = #file, function: String = #function) {
+        let className = extractClassName(from: file)
+        let functionName = extractFunctionName(from: function)
         
-        dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "HH:mm:ss.SSS"
+        let consoleMessage = "\(level) | iOS | \(className) | \(functionName) | \(message)"
         
-        // Clear log file on app start
-        try? "=== ClaudeCodeMicrophone Started ===\n".write(to: logFile, atomically: true, encoding: .utf8)
+        // Always console log first (can't fail)
+        print(consoleMessage)
+        
+        // Use callback for backend forwarding if available
+        loggingCallback?(level, "iOS", className, functionName, message)
     }
     
-    func log(_ message: String, file: String = #file, function: String = #function, line: Int = #line) {
-        let timestamp = dateFormatter.string(from: Date())
-        let filename = URL(fileURLWithPath: file).lastPathComponent
-        let logMessage = "[\(timestamp)] \(filename):\(line) - \(message)\n"
-        
-        // Print to console
-        print(logMessage, terminator: "")
-        
-        // Write to file
-        if let data = logMessage.data(using: .utf8) {
-            if FileManager.default.fileExists(atPath: logFile.path) {
-                if let fileHandle = try? FileHandle(forWritingTo: logFile) {
-                    fileHandle.seekToEndOfFile()
-                    fileHandle.write(data)
-                    fileHandle.closeFile()
-                }
-            } else {
-                try? data.write(to: logFile)
-            }
+    private func extractClassName(from file: String) -> String {
+        let filename = URL(fileURLWithPath: file).deletingPathExtension().lastPathComponent
+        return filename
+    }
+    
+    private func extractFunctionName(from function: String) -> String {
+        // Swift #function gives us "functionName(param1:param2:)" - extract just the name
+        if let parenIndex = function.firstIndex(of: "(") {
+            return String(function[..<parenIndex])
         }
+        return function
     }
     
-    func getLogContents() -> String {
-        return (try? String(contentsOf: logFile, encoding: .utf8)) ?? "No logs available"
+    func log(_ message: String, file: String = #file, function: String = #function) {
+        writeLog("LOG", message, file: file, function: function)
     }
     
-    func getLogFilePath() -> String {
-        return logFile.path
+    func error(_ message: String, file: String = #file, function: String = #function) {
+        writeLog("ERROR", message, file: file, function: function)
     }
+    
 }

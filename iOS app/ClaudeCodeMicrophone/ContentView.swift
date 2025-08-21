@@ -160,7 +160,7 @@ struct ContentView: View {
             .persistentSystemOverlays(.hidden)
             .preferredColorScheme(.light)
             .onAppear {
-                Logger.shared.log("App started. Log file: \(Logger.shared.getLogFilePath())")
+                Logger.shared.log("App started with iOS logging callback system")
                 audioManager.onAudioData = { data in
                     googleBackend.sendAudioData(data)
                 }
@@ -213,7 +213,7 @@ struct ContentView: View {
                             audioManager.startRecording()
                             googleBackend.startRecognition()
                         } else {
-                            Logger.shared.log("❌ iPhone: Not connected to backend")
+                            Logger.shared.error("iPhone: Not connected to backend")
                         }
                     } else {
                         Logger.shared.log("📱 iPhone: Stopping transcription mode")
@@ -257,7 +257,7 @@ struct ContentView: View {
                     
                     // Check if we need to reconnect
                     if !googleBackend.isConnected {
-                        Logger.shared.log("❌ Not connected - performing full reconnect")
+                        Logger.shared.error("Not connected - performing full reconnect")
                         
                         // Reset everything and reconnect
                         audioManager.stopRecording()

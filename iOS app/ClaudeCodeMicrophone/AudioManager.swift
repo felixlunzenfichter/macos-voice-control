@@ -20,14 +20,14 @@ class AudioManager: NSObject {
             if granted {
                 Logger.shared.log("Microphone permission granted")
             } else {
-                Logger.shared.log("Microphone permission denied")
+                Logger.shared.error("Microphone permission denied")
             }
         }
     }
     
     func startRecording() {
         guard !isRecording else { 
-            Logger.shared.log("🔴 Already recording")
+            Logger.shared.error("Already recording")
             return 
         }
         
@@ -54,7 +54,7 @@ class AudioManager: NSObject {
             Logger.shared.log("✅ Audio recording started successfully")
             
         } catch {
-            Logger.shared.log("Failed to start recording: \(error)")
+            Logger.shared.error("Failed to start recording: \(error.localizedDescription)")
         }
     }
     
@@ -68,7 +68,7 @@ class AudioManager: NSObject {
         do {
             try AVAudioSession.sharedInstance().setActive(false)
         } catch {
-            Logger.shared.log("Failed to deactivate audio session: \(error)")
+            Logger.shared.error("Failed to deactivate audio session: \(error.localizedDescription)")
         }
     }
     
@@ -92,7 +92,7 @@ class AudioManager: NSObject {
         }
         
         guard status != .error else {
-            Logger.shared.log("Conversion error: \(error?.localizedDescription ?? "Unknown")")
+            Logger.shared.error("Audio conversion error: \(error?.localizedDescription ?? "Unknown error")")
             return nil
         }
         

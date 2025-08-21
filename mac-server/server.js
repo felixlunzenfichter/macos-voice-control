@@ -104,7 +104,7 @@ class MacServer {
           logger.log(`Final transcript: "${message.transcript}"`);
           this.typeTranscription(message.transcript);
         } else {
-          logger.log(`Interim transcript`);
+          logger.log(`Interim transcript: "${message.transcript}"`);
         }
         break;
         
@@ -148,6 +148,11 @@ class MacServer {
   receiveLog(logEntry) {
     // Use the default file logging to write forwarded logs to local file
     logger.defaultFileLogging(logEntry);
+    
+    // Also log iOS logs to console for visibility
+    if (logEntry.service === 'iOS') {
+      logger.log(`iOS | ${logEntry.class || 'unknown'} | ${logEntry.function || 'unknown'} | ${logEntry.message}`);
+    }
   }
 
   typeTranscription(text) {

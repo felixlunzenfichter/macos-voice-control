@@ -79,6 +79,9 @@ class GoogleBackend: NSObject {
             self.connectionStatus = "Connected"
             Logger.shared.log("Successfully connected to backend")
             
+            // Set up logger callback to forward logs to backend
+            self.setupLoggerCallback()
+            
             // Send identify message
             let identifyMessage = [
                 "type": "identify",
@@ -89,7 +92,7 @@ class GoogleBackend: NSObject {
             if let data = try? JSONSerialization.data(withJSONObject: identifyMessage) {
                 self.webSocket?.send(.data(data)) { error in
                     if let error = error {
-                        Logger.shared.log("Error sending identify message: \(error.localizedDescription)")
+                        Logger.shared.error("Error sending identify message: \(error.localizedDescription)")
                     } else {
                         Logger.shared.log("Sent identify message as transcriber")
                     }
@@ -106,7 +109,7 @@ class GoogleBackend: NSObject {
     func startRecognition() {
         guard isConnected else { return }
         guard let sampleRate = self.sampleRate else {
-            Logger.shared.log("ERROR: Sample rate not set before starting recognition.")
+            Logger.shared.error("Sample rate not set before starting recognition")
             return
         }
         
@@ -119,7 +122,7 @@ class GoogleBackend: NSObject {
         if let data = try? JSONSerialization.data(withJSONObject: startMessage) {
             webSocket?.send(.data(data)) { [weak self] error in
                 if let error = error {
-                    Logger.shared.log("Error starting recognition: \(error.localizedDescription)")
+                    Logger.shared.error("Error starting recognition: \(error.localizedDescription)")
                 } else {
                     self?.isRecognizing = true
                     Logger.shared.log("Started recognition stream")
@@ -187,7 +190,7 @@ class GoogleBackend: NSObject {
     
     func requestServerStatus() {
         guard isConnected else { 
-            Logger.shared.log("Cannot request status - not connected")
+            Logger.shared.error("Cannot request status - not connected")
             return 
         }
         
@@ -196,7 +199,7 @@ class GoogleBackend: NSObject {
         if let data = try? JSONSerialization.data(withJSONObject: statusRequest) {
             webSocket?.send(.data(data)) { error in
                 if let error = error {
-                    Logger.shared.log("Error requesting status: \(error)")
+                    Logger.shared.error("Error requesting status: \(error.localizedDescription)")
                 } else {
                     Logger.shared.log("Status request sent successfully")
                 }
@@ -209,7 +212,7 @@ class GoogleBackend: NSObject {
         
         webSocket?.send(.data(audioData)) { [weak self] error in
             if let error = error {
-                Logger.shared.log("Error sending audio: \(error)")
+                Logger.shared.error("Error sending audio: \(error.localizedDescription)")
                 print("Error sending audio: \(error)")
             } else {
                 // Successfully sent audio packet
@@ -242,7 +245,7 @@ class GoogleBackend: NSObject {
         if let data = try? JSONSerialization.data(withJSONObject: stopMessage) {
             webSocket?.send(.data(data)) { error in
                 if let error = error {
-                    Logger.shared.log("❌ Failed to send stop forwarding: \(error)")
+                    Logger.shared.error("Failed to send stop forwarding: \(error.localizedDescription)")
                 } else {
                     Logger.shared.log("✅ Stop forwarding message sent")
                 }
@@ -252,7 +255,7 @@ class GoogleBackend: NSObject {
     
     func sendEscapeKeyPress() {
         guard isConnected else {
-            Logger.shared.log("❌ Cannot send escape key - not connected")
+            Logger.shared.error("Cannot send escape key - not connected")
             return
         }
         
@@ -264,7 +267,7 @@ class GoogleBackend: NSObject {
         if let data = try? JSONSerialization.data(withJSONObject: escapeMessage) {
             webSocket?.send(.data(data)) { error in
                 if let error = error {
-                    Logger.shared.log("❌ Failed to send escape key: \(error)")
+                    Logger.shared.error("Failed to send escape key: \(error.localizedDescription)")
                 } else {
                     Logger.shared.log("✅ Escape key press sent")
                 }
@@ -274,7 +277,7 @@ class GoogleBackend: NSObject {
     
     func sendTTSToggle(enabled: Bool) {
         guard isConnected else {
-            Logger.shared.log("❌ Cannot send TTS toggle - not connected")
+            Logger.shared.error("Cannot send TTS toggle - not connected")
             return
         }
         
@@ -286,7 +289,7 @@ class GoogleBackend: NSObject {
         if let data = try? JSONSerialization.data(withJSONObject: ttsMessage) {
             webSocket?.send(.data(data)) { error in
                 if let error = error {
-                    Logger.shared.log("❌ Failed to send TTS toggle: \(error)")
+                    Logger.shared.error("Failed to send TTS toggle: \(error.localizedDescription)")
                 } else {
                     Logger.shared.log("✅ TTS toggle sent: \(enabled)")
                 }
@@ -296,7 +299,7 @@ class GoogleBackend: NSObject {
     
     func sendTTSProcessControl(enabled: Bool) {
         guard isConnected else {
-            Logger.shared.log("❌ Cannot send TTS process control - not connected")
+            Logger.shared.error("Cannot send TTS process control - not connected")
             return
         }
         
@@ -308,7 +311,7 @@ class GoogleBackend: NSObject {
         if let data = try? JSONSerialization.data(withJSONObject: controlMessage) {
             webSocket?.send(.data(data)) { error in
                 if let error = error {
-                    Logger.shared.log("❌ Failed to send TTS process control: \(error)")
+                    Logger.shared.error("Failed to send TTS process control: \(error.localizedDescription)")
                 } else {
                     Logger.shared.log("✅ TTS process control sent: \(enabled ? "start" : "stop")")
                 }
@@ -339,7 +342,7 @@ class GoogleBackend: NSObject {
             case .failure(let error):
                 // Only log and update status if this wasn't an intentional disconnect
                 if !self.isIntentionalDisconnect {
-                    Logger.shared.log("WebSocket receive error: \(error)")
+                    Logger.shared.error("WebSocket receive error: \(error.localizedDescription)")
                     print("WebSocket receive error: \(error)")
                     self.connectionStatus = "Disconnected: \(error.localizedDescription)"
                 }
@@ -426,7 +429,7 @@ class GoogleBackend: NSObject {
     
     func sendHelpMessage() {
         guard isConnected else {
-            Logger.shared.log("❌ Cannot send help message - not connected")
+            Logger.shared.error("Cannot send help message - not connected")
             return
         }
         
@@ -439,7 +442,7 @@ class GoogleBackend: NSObject {
         if let data = try? JSONSerialization.data(withJSONObject: helpMessage) {
             webSocket?.send(.data(data)) { error in
                 if let error = error {
-                    Logger.shared.log("❌ Failed to send help message: \(error)")
+                    Logger.shared.error("Failed to send help message: \(error.localizedDescription)")
                 } else {
                     Logger.shared.log("✅ Help message sent successfully")
                 }
@@ -458,9 +461,34 @@ class GoogleBackend: NSObject {
         if let data = try? JSONSerialization.data(withJSONObject: micMessage) {
             webSocket?.send(.data(data)) { error in
                 if let error = error {
-                    Logger.shared.log("❌ Failed to send mic status: \(error)")
+                    Logger.shared.error("Failed to send mic status: \(error.localizedDescription)")
                 } else {
                     Logger.shared.log("✅ Mic status sent: \(active ? "active" : "inactive")")
+                }
+            }
+        }
+    }
+    
+    private func setupLoggerCallback() {
+        Logger.shared.loggingCallback = { [weak self] level, service, className, functionName, message in
+            guard let self = self, self.isConnected else { return }
+            
+            let logMessage: [String: Any] = [
+                "type": "iOSlog",
+                "level": level,
+                "service": service,
+                "class": className,
+                "function": functionName,
+                "message": message,
+                "timestamp": ISO8601DateFormatter().string(from: Date())
+            ]
+            
+            if let data = try? JSONSerialization.data(withJSONObject: logMessage) {
+                self.webSocket?.send(.data(data)) { error in
+                    if let error = error {
+                        // Don't log errors here to avoid infinite loops
+                        print("Failed to send log to backend: \(error)")
+                    }
                 }
             }
         }

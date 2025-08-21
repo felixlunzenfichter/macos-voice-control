@@ -11,21 +11,18 @@ const clients = {
   receivers: new Map()
 };
 
-// Backend logger with forwarding callback to mac-server
+// Backend logger with forwarding callback to mac-server specifically
 const logger = new Logger('backend', (logEntry) => {
   try {
-    // Forward to mac-server via WebSocket if available
-    if (clients && clients.receivers && clients.receivers.size > 0) {
+    // Forward to Mac Server specifically via WebSocket if connected
+    const macServer = clients.receivers.get("Mac Server");
+    if (macServer && macServer.readyState === 1) { // WebSocket.OPEN = 1
       const logMessage = {
         type: 'log',
         ...logEntry
       };
       const messageStr = JSON.stringify(logMessage);
-      for (const [name, receiver] of clients.receivers.entries()) {
-        if (receiver && receiver.readyState === 1) { // WebSocket.OPEN = 1
-          receiver.send(messageStr);
-        }
-      }
+      macServer.send(messageStr);
     }
   } catch (error) {
     // Ignore errors in log forwarding to prevent crashes
@@ -369,25 +366,12 @@ wss.on('connection', (ws) => {
           
         } else if (message.type === 'pong') {
           
-        } else if (message.type === 'log') {
-          // Forward iOS logs to mac-server only
-          const logMessage = {
-            type: 'log',
-            level: message.level || 'LOG',
-            service: 'iOS',
-            class: message.class || '',
-            function: message.function || '',
-            message: message.message,
-            timestamp: new Date().toISOString(),
-            ...message.metadata
-          };
-          
-          // Forward to mac-server
-          const messageStr = JSON.stringify(logMessage);
-          for (const [name, receiver] of clients.receivers.entries()) {
-            if (receiver.readyState === receiver.OPEN) {
-              receiver.send(messageStr);
-            }
+        } else if (message.type === 'iOSlog') {
+          // Use backend logger - the callback will automatically forward to mac-server
+          if (message.level === 'ERROR') {
+            logger.error(message.message);
+          } else {
+            logger.log(message.message);
           }
           
         } else {
